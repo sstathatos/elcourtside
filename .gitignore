@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Node / Astro
+node_modules/
+web/dist/
+.astro/
+
+# Data — the SQLite DB is rebuildable from the API, never committed
+*.db
+*.sqlite3
+data/
+
+# Local env
+.env
+
+# Working docs — kept local, not published in the public repo
+doc/
+CLAUDE.md
