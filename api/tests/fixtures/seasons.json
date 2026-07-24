@@ -1,0 +1,58 @@
+{
+  "total": 3,
+  "data": [
+    {
+      "name": "EuroLeague 2026-27",
+      "code": "E2026",
+      "alias": "2026-27",
+      "competitionCode": "E",
+      "year": 2026,
+      "startDate": "2026-07-01T00:00:00",
+      "activationDate": "2026-07-01T00:00:00",
+      "endDate": "2027-06-30T23:59:59",
+      "winner": null
+    },
+    {
+      "name": "EuroLeague 2025-26",
+      "code": "E2025",
+      "alias": "2025-26",
+      "competitionCode": "E",
+      "year": 2025,
+      "startDate": "2025-07-01T00:00:00",
+      "activationDate": "2025-07-01T00:00:00",
+      "endDate": "2026-06-30T23:59:59",
+      "winner": {
+        "code": "OLY",
+        "name": "Olympiacos Piraeus",
+        "abbreviatedName": "Olympiacos",
+        "editorialName": "Olympiacos",
+        "tvCode": "OLY",
+        "isVirtual": false,
+        "images": {
+          "crest": "https://media-cdn.incrowdsports.com/789423ac-3cdf-4b89-b11c-b458aa5f59a6.png"
+        }
+      }
+    },
+    {
+      "name": "Euroleague 2000-01",
+      "code": "E2000",
+      "alias": "2000-01",
+      "competitionCode": "E",
+      "year": 2000,
+      "startDate": "2000-09-01T00:00:00",
+      "activationDate": "2000-08-01T00:00:00",
+      "endDate": "2001-08-30T23:59:59",
+      "winner": {
+        "code": "VIR",
+        "name": "Kinder Virtus Bologna",
+        "abbreviatedName": "Kinder Bologna",
+        "editorialName": "Virtus",
+        "tvCode": "VIR",
+        "isVirtual": false,
+        "images": {
+          "crest": "https://media-cdn.cortextech.io/1362801d-dd09-4fd0-932d-ead56063ab77.png"
+        }
+      }
+    }
+  ]
+}

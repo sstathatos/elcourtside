@@ -1,0 +1,191 @@
+{
+  "total": 3,
+  "data": [
+    {
+      "person": {
+        "code": "008811",
+        "name": "FALL, MOUSTAPHA",
+        "alias": "FALL, MOUSTAPHA",
+        "aliasRaw": "FALL, MOUSTAPHA",
+        "passportName": "MOUSTAPHA FALOU",
+        "passportSurname": "FALL",
+        "jerseyName": "FALL",
+        "abbreviatedName": "Fall, M.",
+        "country": {
+          "code": "FRA",
+          "name": "France"
+        },
+        "height": 218,
+        "weight": 127,
+        "birthDate": "1992-02-23T00:00:00",
+        "birthCountry": {
+          "code": "FRA",
+          "name": "France"
+        },
+        "twitterAccount": "moustaphafall15",
+        "instagramAccount": "moustaphafall10/",
+        "facebookAccount": "",
+        "isReferee": false,
+        "images": {}
+      },
+      "type": "J",
+      "typeName": "Player",
+      "active": true,
+      "startDate": "2026-02-25T15:07:09.067",
+      "endDate": "2026-06-30T00:00:00",
+      "order": 0,
+      "dorsal": "10",
+      "dorsalRaw": "10",
+      "position": 3,
+      "positionName": "Center",
+      "lastTeam": "OLYMPIACOS",
+      "externalId": 54199,
+      "images": {
+        "action": "https://media-cdn.cortextech.io/bc0bef29-4444-425d-97f1-cdb9ae9acb5d.png",
+        "headshot": "https://media-cdn.cortextech.io/bc0bef29-4444-425d-97f1-cdb9ae9acb5d.png"
+      },
+      "club": {
+        "code": "OLY",
+        "name": "Olympiacos Piraeus",
+        "abbreviatedName": "Olympiacos",
+        "editorialName": "Olympiacos",
+        "tvCode": "OLY",
+        "isVirtual": false,
+        "images": {
+          "crest": "https://media-cdn.incrowdsports.com/789423ac-3cdf-4b89-b11c-b458aa5f59a6.png"
+        }
+      },
+      "season": {
+        "name": "EuroLeague 2025-26",
+        "code": "E2025",
+        "alias": "2025-26",
+        "competitionCode": "E",
+        "year": 2025,
+        "startDate": "2025-07-01T00:00:00"
+      }
+    },
+    {
+      "person": {
+        "code": "006020",
+        "name": "EBO, AMIT",
+        "alias": "Ebo",
+        "aliasRaw": "Ebo",
+        "passportName": "AMIT",
+        "passportSurname": "EBO",
+        "jerseyName": "EBO",
+        "abbreviatedName": "Ebo, A.",
+        "country": {
+          "code": "ISR",
+          "name": "Israel"
+        },
+        "height": 180,
+        "weight": 90,
+        "birthDate": "1999-10-06T00:00:00",
+        "birthCountry": {
+          "code": "ISR",
+          "name": "Israel"
+        },
+        "twitterAccount": "",
+        "instagramAccount": "",
+        "facebookAccount": "",
+        "isReferee": false,
+        "images": {}
+      },
+      "type": "J",
+      "typeName": "Player",
+      "active": true,
+      "startDate": "2026-02-25T12:26:49.731",
+      "endDate": "2026-06-30T00:00:00",
+      "order": 0,
+      "dorsal": "5",
+      "dorsalRaw": "5",
+      "position": 1,
+      "positionName": "Guard",
+      "lastTeam": "BOULAZAC BASKET",
+      "externalId": 54198,
+      "images": {
+        "action": "https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCcz1GL/c02e839e-beea-433f-8a0f-6a8bf042f69f.png",
+        "headshot": "https://media-cdn.cortextech.io/1dU3kpCqReRp93/1BSdBWIjCcz1GL/c02e839e-beea-433f-8a0f-6a8bf042f69f.png"
+      },
+      "club": {
+        "code": "TEL",
+        "name": "Maccabi Rapyd Tel Aviv",
+        "abbreviatedName": "Maccabi",
+        "editorialName": "Maccabi",
+        "tvCode": "MTA",
+        "isVirtual": false,
+        "images": {
+          "crest": "https://media-cdn.cortextech.io/1b533342-78f5-4932-b714-a7d80b5826b5.png"
+        }
+      },
+      "season": {
+        "name": "EuroLeague 2025-26",
+        "code": "E2025",
+        "alias": "2025-26",
+        "competitionCode": "E",
+        "year": 2025,
+        "startDate": "2025-07-01T00:00:00"
+      }
+    },
+    {
+      "person": {
+        "code": "000406",
+        "name": "GEORGALLIS, IOANNIS",
+        "alias": "GEORGALLIS, IOANNIS",
+        "aliasRaw": "GEORGALLIS, IOANNIS",
+        "passportName": "IOANNIS",
+        "passportSurname": "GEORGALLIS",
+        "jerseyName": "",
+        "abbreviatedName": "",
+        "country": {
+          "code": "GRE",
+          "name": "Greece"
+        },
+        "height": 0,
+        "weight": 0,
+        "birthDate": "1983-05-17T00:00:00",
+        "birthCountry": {
+          "code": "GRE",
+          "name": "Greece"
+        },
+        "twitterAccount": "",
+        "instagramAccount": "",
+        "facebookAccount": "",
+        "isReferee": false,
+        "images": {}
+      },
+      "type": "A",
+      "typeName": "Assitant coach",
+      "active": false,
+      "startDate": "2025-09-08T13:50:26.188",
+      "endDate": "2026-04-14T10:34:21.267",
+      "order": 7,
+      "dorsal": "",
+      "dorsalRaw": "",
+      "position": 0,
+      "positionName": null,
+      "lastTeam": "",
+      "externalId": 51887,
+      "images": {},
+      "club": {
+        "code": "DUB",
+        "name": "Dubai Basketball",
+        "abbreviatedName": "Dubai",
+        "editorialName": "Dubai",
+        "tvCode": "DUB",
+        "isVirtual": false,
+        "images": {
+          "crest": "https://media-cdn.incrowdsports.com/1efae090-16e2-4963-ae47-4b94f249c244.png"
+        }
+      },
+      "season": {
+        "name": "EuroLeague 2025-26",
+        "code": "E2025",
+        "alias": "2025-26",
+        "competitionCode": "E",
+        "year": 2025,
+        "startDate": "2025-07-01T00:00:00"
+      }
+    }
+  ]
+}
