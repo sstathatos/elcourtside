@@ -17,7 +17,7 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = ["ingest", "ingest.sources"]
+packages = ["ingest", "ingest.sources", "metrics"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

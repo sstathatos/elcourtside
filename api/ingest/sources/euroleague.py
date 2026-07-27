@@ -18,7 +18,6 @@ Quirks handled here so the rest of the codebase never sees them:
 from __future__ import annotations
 
 import json
-import re
 
 from ingest.client import NotFoundError, PoliteClient
 from ingest.sources.base import FetchedGameDetail, FetchedList, Source
@@ -36,10 +35,18 @@ PBP_QUARTERS = [
 
 
 def normalize_person_code(value: str | None) -> str:
-    """Trim padding and strip the PBP-only 'P' prefix from person codes."""
+    """Person codes as used by boxscore/people: just trim padding."""
+    return (value or "").strip()
+
+
+def normalize_pbp_player_id(value: str | None) -> str:
+    """PBP PLAYER_IDs prefix *every* person code with 'P' — numeric
+    ('P007200' vs '007200') and legacy alphanumeric ('PTGB' vs 'TGB', Llull)
+    alike — so one leading 'P' is always stripped. Bench pseudo-codes like
+    'CO_A' (coach) don't start with 'P' and pass through untouched."""
     s = (value or "").strip()
-    if re.fullmatch(r"P\d+", s):
-        s = s[1:]
+    if len(s) > 1 and s.startswith("P"):
+        return s[1:]
     return s
 
 
@@ -173,7 +180,7 @@ def parse_pbp(doc) -> tuple[list[dict], bool]:
                 "play_number": play_number,
                 "play_type": (ev.get("PLAYTYPE") or "").strip(),
                 "team_code": (ev.get("CODETEAM") or "").strip(),
-                "player_code": normalize_person_code(ev.get("PLAYER_ID")),
+                "player_code": normalize_pbp_player_id(ev.get("PLAYER_ID")),
                 "player_name": ev.get("PLAYER"),
                 "dorsal": ev.get("DORSAL"),
                 "minute": ev.get("MINUTE"),

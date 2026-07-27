@@ -6,12 +6,22 @@ from ingest.sources import euroleague as el
 
 
 def test_normalize_person_code():
-    assert el.normalize_person_code("P007200   ") == "007200"
+    # boxscore/people codes: trim only, never stripped
     assert el.normalize_person_code("006590") == "006590"
     assert el.normalize_person_code("  006590 ") == "006590"
-    assert el.normalize_person_code("PAB12") == "PAB12"  # not a P+digits code
+    assert el.normalize_person_code("TGB") == "TGB"
     assert el.normalize_person_code(None) == ""
     assert el.normalize_person_code("          ") == ""
+
+
+def test_normalize_pbp_player_id():
+    # PBP prefixes every person code with 'P' — numeric and legacy alike
+    assert el.normalize_pbp_player_id("P007200   ") == "007200"
+    assert el.normalize_pbp_player_id("PTGB      ") == "TGB"    # Llull
+    assert el.normalize_pbp_player_id("PLCZ") == "LCZ"          # Motiejunas
+    assert el.normalize_pbp_player_id("CO_A") == "CO_A"         # coach pseudo-code
+    assert el.normalize_pbp_player_id("P") == "P"
+    assert el.normalize_pbp_player_id(None) == ""
 
 
 def test_parse_seasons():

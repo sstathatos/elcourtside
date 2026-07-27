@@ -31,10 +31,23 @@ def main(argv: list[str] | None = None) -> int:
                         help="max games to detail-fetch this run (dev/testing)")
     parser.add_argument("--min-interval", type=float, default=MIN_POLITE_INTERVAL,
                         help=f"seconds between API requests (floor: {MIN_POLITE_INTERVAL})")
+    parser.add_argument("--reparse", action="store_true",
+                        help="re-parse boxscore/pbp from stored raw payloads (no network)")
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, stream=sys.stderr,
                         format="%(asctime)s %(levelname)s %(message)s")
+
+    if args.reparse:
+        from ingest import reparse
+        conn = db.connect(args.db)
+        try:
+            seasons = reparse.resolve_db_seasons(conn, args.source, args.seasons)
+            counts = reparse.reparse_details(conn, args.source, seasons)
+        finally:
+            conn.close()
+        log.info("reparsed: %s", counts)
+        return 0
 
     min_interval = args.min_interval
     if min_interval < MIN_POLITE_INTERVAL:
