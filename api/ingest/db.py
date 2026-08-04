@@ -165,8 +165,10 @@ CREATE TABLE IF NOT EXISTS ingest_runs (
 """
 
 
-def connect(path: str) -> sqlite3.Connection:
-    conn = sqlite3.connect(path)
+def connect(path: str, check_same_thread: bool = True) -> sqlite3.Connection:
+    # check_same_thread=False is for the API tests, where one in-memory
+    # database is shared with the TestClient's server thread.
+    conn = sqlite3.connect(path, check_same_thread=check_same_thread)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode = WAL")
     conn.execute("PRAGMA synchronous = NORMAL")

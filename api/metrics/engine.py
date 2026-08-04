@@ -64,7 +64,9 @@ def compute_season(conn, source: str, season_code: str) -> SeasonSummary:
         _rollup_teams(conn, source, season_code)
         _write_standings(conn, source, season_code)
 
-        now = datetime.now(UTC).isoformat(timespec="seconds")
+        # microseconds, not seconds: the API derives its cache key and ETags
+        # from this stamp, so two recomputes must never collide
+        now = datetime.now(UTC).isoformat(timespec="microseconds")
         for key, value in ((f"computed_at:{source}:{season_code}", now),
                            (f"engine_version:{source}:{season_code}", str(ENGINE_VERSION))):
             conn.execute("INSERT OR REPLACE INTO metrics_meta (key, value) VALUES (?, ?)",
