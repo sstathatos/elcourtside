@@ -1,0 +1,191 @@
+---
+/**
+ * The page-header basketball — a real 3D ball, ported from the user's
+ * standalone three.js scene: pebbled-leather sphere, flush black seam
+ * channels (two great-circle tori plus two oval side seams), an inflation
+ * valve, and a diagonal spin that only runs while hovering.
+ *
+ * This component owns only the markup; the scene is built client-side in the
+ * script below, one scene per canvas. The tiny logo mark stays the flat SVG
+ * `Basketball.astro` — a WebGL context is not worth 20 pixels.
+ *
+ * Each load picks a random orientation, so a refresh never shows the same
+ * face twice.
+ */
+interface Props {
+  size?: number;
+  class?: string;
+}
+const { size = 88, class: className = '' } = Astro.props;
+---
+
+<canvas
+  class:list={['ball3d', className]}
+  width={size}
+  height={size}
+  data-basketball
+  aria-hidden="true"
+></canvas>
+
+<style>
+  .ball3d {
+    display: block;
+    flex: none;
+  }
+</style>
+
+<script>
+  import * as THREE from 'three';
+
+  const R = 0.121; // regulation size-7 radius (m)
+  const seamR = 0.012; // seam channel tube radius
+  const d = 0.075; // offset of the two side-seam planes
+
+  // pebbled leather bump map (procedural canvas)
+  function pebbleTexture(): THREE.CanvasTexture {
+    const s = 1024;
+    const c = document.createElement('canvas');
+    c.width = c.height = s;
+    const ctx = c.getContext('2d')!;
+    ctx.fillStyle = '#808080';
+    ctx.fillRect(0, 0, s, s);
+    let seed = 42;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 14000; i++) {
+      const x = rnd() * s;
+      const y = rnd() * s;
+      const r = 1.5 + rnd() * 2.6;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      const h = (150 + rnd() * 60) | 0;
+      g.addColorStop(0, `rgb(${h},${h},${h})`);
+      g.addColorStop(0.7, `rgb(${h - 40},${h - 40},${h - 40})`);
+      g.addColorStop(1, 'rgba(100,100,100,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(4, 2);
+    return t;
+  }
+
+  // seams sit almost buried so only a thin flush line shows, never a raised
+  // rib outside the ball's silhouette
+  const inset = R - seamR * 0.97;
+
+  // oval side seams — wider along the equator, pulled in toward the poles
+  const e = 0.018; // ovalness: extra pull toward the main seam at top/bottom
+  const f = 0.014; // flare: drag outward where the seam crosses the equator
+  class SideSeamCurve extends THREE.Curve<THREE.Vector3> {
+    constructor(private sign: number) {
+      super();
+    }
+    getPoint(t: number): THREE.Vector3 {
+      const a = t * Math.PI * 2;
+      const c = Math.cos(a);
+      const z = d + e * Math.sin(a) * Math.sin(a) - f * c * c * c * c * c * c;
+      const r = Math.sqrt(inset * inset - z * z);
+      return new THREE.Vector3(r * Math.cos(a), r * Math.sin(a), this.sign * z);
+    }
+  }
+
+  function buildBall(): THREE.Group {
+    const bump = pebbleTexture();
+    const leather = new THREE.MeshStandardMaterial({
+      color: 0x9c4218,
+      roughness: 0.88,
+      metalness: 0.0,
+      bumpMap: bump,
+      bumpScale: 0.6,
+    });
+    const rubber = new THREE.MeshStandardMaterial({
+      color: 0x17130f,
+      roughness: 0.75,
+      metalness: 0.0,
+    });
+
+    const ball = new THREE.Group();
+    ball.add(new THREE.Mesh(new THREE.SphereGeometry(R, 96, 64), leather));
+
+    // vertical great circle (plane z = 0)
+    ball.add(new THREE.Mesh(new THREE.TorusGeometry(inset, seamR, 24, 256), rubber));
+
+    // equator great circle (plane y = 0)
+    const equator = new THREE.Mesh(new THREE.TorusGeometry(inset, seamR, 24, 256), rubber);
+    equator.rotation.x = Math.PI / 2;
+    ball.add(equator);
+
+    for (const sign of [-1, 1]) {
+      ball.add(
+        new THREE.Mesh(new THREE.TubeGeometry(new SideSeamCurve(sign), 400, seamR, 24, true), rubber),
+      );
+    }
+
+    // inflation valve: small rubber ring on a panel between the seams
+    const valve = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.003, 24), rubber);
+    const vDir = new THREE.Vector3(Math.sin(0.7), -Math.cos(0.7), 0).normalize();
+    valve.position.copy(vDir).multiplyScalar(R - 0.0005);
+    valve.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), vDir);
+    ball.add(valve);
+
+    return ball;
+  }
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  for (const canvas of document.querySelectorAll<HTMLCanvasElement>('canvas[data-basketball]')) {
+    const size = canvas.width;
+
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    } catch {
+      continue; // no WebGL — the page just has no ball
+    }
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(size, size, false);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 10);
+    camera.position.set(0, 0.07, 0.5);
+    camera.lookAt(0, 0, 0);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+    const key = new THREE.DirectionalLight(0xffffff, 3);
+    key.position.set(2, 3, 4);
+    scene.add(key);
+
+    const ball = buildBall();
+    scene.add(ball);
+
+    // diagonal spin axis, shared by the random start pose and the hover spin
+    const spinAxis = new THREE.Vector3(1, 1, 0.3).normalize();
+
+    // A refresh lands on a different face. Rotating about the spin axis (rather
+    // than randomising Euler angles) keeps the start pose inside the same family
+    // the hover animation sweeps through, so it can never look tipped over.
+    ball.rotateOnWorldAxis(spinAxis, Math.random() * Math.PI * 2);
+
+    if (reduceMotion) {
+      renderer.render(scene, camera);
+      continue;
+    }
+
+    let hovering = false;
+    canvas.addEventListener('pointerenter', () => {
+      hovering = true;
+    });
+    canvas.addEventListener('pointerleave', () => {
+      hovering = false;
+    });
+
+    const spin = () => {
+      if (hovering) ball.rotateOnWorldAxis(spinAxis, 0.008);
+      renderer.render(scene, camera);
+      requestAnimationFrame(spin);
+    };
+    requestAnimationFrame(spin);
+  }
+</script>

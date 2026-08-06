@@ -1,0 +1,24 @@
+---
+import Base from '../../layouts/Base.astro';
+import Basketball3D from '../../components/Basketball3D.astro';
+import Players from '../../islands/Players.tsx';
+---
+
+<Base
+  title="Players — elcourtside"
+  description="Euroleague player leaderboards: PIR per game and per 36 minutes, plus/minus reconstructed from play-by-play, clutch and fouls drawn."
+>
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Players</h1>
+      <p class="page-intro">
+        PIR is computed from the boxscore with the official formula; +/- is
+        reconstructed from substitution events, so it exists only for seasons with
+        play-by-play (2007-08 onward).
+      </p>
+    </div>
+    <Basketball3D size={88} />
+  </div>
+
+  <Players client:load />
+</Base>

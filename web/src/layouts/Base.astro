@@ -1,0 +1,213 @@
+---
+import '@fontsource/space-mono/400.css';
+import '@fontsource/space-mono/700.css';
+import '../styles/global.css';
+import Basketball from '../components/Basketball.astro';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+const nav = [
+  { href: '/', label: 'Standings' },
+  { href: '/games/', label: 'Games' },
+  { href: '/teams/', label: 'Teams' },
+  { href: '/players/', label: 'Players' },
+  { href: '/indexes/', label: 'Indexes' },
+];
+const path = Astro.url.pathname;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>{title}</title>
+    <script is:inline>
+      // Applied before first paint so the page never flashes the wrong theme.
+      const stored = localStorage.getItem('theme');
+      const preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.dataset.theme = stored ?? preferred;
+    </script>
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="container topbar-inner">
+        <span>EUROLEAGUE STATS</span>
+        <a href="https://sstathatos.dev">SSTATHATOS.DEV</a>
+      </div>
+    </div>
+
+    <header class="container site-header">
+      <a class="logo" href="/">
+        <Basketball size={20} class="logo-ball" />
+        elcourtside
+      </a>
+      <nav>
+        {
+          nav.map((item) => (
+            <a href={item.href} aria-current={path === item.href ? 'page' : undefined}>
+              {item.label}
+            </a>
+          ))
+        }
+      </nav>
+      <button id="theme-toggle" aria-label="Toggle dark mode" title="Toggle theme">&gt;/&lt;</button>
+    </header>
+
+    <main class="container">
+      <slot />
+    </main>
+
+    <footer>
+      <div class="container site-footer">
+        <p class="colophon">
+          <a href="/api/docs">API docs</a> ·
+          <a href="https://github.com/sstathatos/elcourtside">Source</a> ·
+          Built with Astro, shipped by ArgoCD, running on k3s.
+        </p>
+      </div>
+    </footer>
+
+    <script is:inline>
+      document.getElementById('theme-toggle').addEventListener('click', () => {
+        const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+        document.documentElement.dataset.theme = next;
+        localStorage.setItem('theme', next);
+      });
+    </script>
+  </body>
+</html>
+
+<style>
+  .topbar {
+    border-bottom: 1px solid var(--line);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+  }
+
+  .topbar-inner {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0 1rem;
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
+  }
+
+  .topbar a {
+    text-decoration: none;
+  }
+
+  .site-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem 2.5rem;
+    padding-top: 1.4rem;
+    padding-bottom: 1.4rem;
+  }
+
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    /* the wordmark and the ball are one unit — never break across lines */
+    white-space: nowrap;
+    flex: 0 0 auto;
+    background: var(--chip-bg);
+    color: var(--chip-text);
+    font-weight: 700;
+    font-size: 1.05rem;
+    padding: 0.15rem 0.6rem;
+    text-decoration: none;
+    transform: rotate(-2deg);
+    transition: transform 0.15s ease;
+  }
+
+  .logo:hover {
+    color: var(--chip-text);
+    transform: rotate(2deg) scale(1.06);
+  }
+
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem 2rem;
+    flex: 1;
+  }
+
+  nav a {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    text-decoration-thickness: 1px;
+  }
+
+  nav a:hover,
+  nav a[aria-current='page'] {
+    text-decoration-thickness: 3px;
+    text-decoration-color: var(--accent);
+  }
+
+  #theme-toggle {
+    background: none;
+    color: var(--text);
+    border: none;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  #theme-toggle:hover {
+    color: var(--accent);
+  }
+
+  main {
+    padding-bottom: 3rem;
+    min-height: 60vh;
+  }
+
+  footer {
+    border-top: 1px solid var(--line);
+  }
+
+  .site-footer {
+    padding-top: 1.6rem;
+    padding-bottom: 2.5rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .colophon {
+    font-size: 0.75rem;
+    max-width: 52rem;
+  }
+
+  @media (max-width: 40rem) {
+    nav {
+      order: 3;
+      flex-basis: 100%;
+      gap: 0.5rem 1.1rem;
+    }
+
+    #theme-toggle {
+      margin-left: auto;
+    }
+
+    nav a {
+      font-size: 0.76rem;
+      letter-spacing: 0.06em;
+    }
+  }
+</style>

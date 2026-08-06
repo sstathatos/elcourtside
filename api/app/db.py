@@ -26,7 +26,12 @@ def db_path() -> str:
 
 
 def connect_ro(path: str | None = None) -> sqlite3.Connection:
-    conn = sqlite3.connect(f"file:{path or db_path()}?mode=ro", uri=True)
+    # check_same_thread=False: this connection is never shared between
+    # concurrent requests (each gets its own via get_conn below), but a
+    # single request can hop threadpool workers between the sync dependency
+    # that opens it and the sync endpoint that uses it — sqlite3 refuses
+    # that by default even though nothing here is actually concurrent.
+    conn = sqlite3.connect(f"file:{path or db_path()}?mode=ro", uri=True, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 

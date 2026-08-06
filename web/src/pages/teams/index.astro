@@ -1,0 +1,23 @@
+---
+import Base from '../../layouts/Base.astro';
+import Basketball3D from '../../components/Basketball3D.astro';
+import Teams from '../../islands/Teams.tsx';
+---
+
+<Base
+  title="Teams — elcourtside"
+  description="Euroleague team stats: pace, fouls drawn per 100 possessions, biggest scoring runs and blown leads, clutch scoring."
+>
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Teams</h1>
+      <p class="page-intro">
+        Season totals per club, including the play-by-play indexes: biggest run,
+        biggest blown lead, clutch points and fouls drawn per 100 possessions.
+      </p>
+    </div>
+    <Basketball3D size={88} />
+  </div>
+
+  <Teams client:load />
+</Base>

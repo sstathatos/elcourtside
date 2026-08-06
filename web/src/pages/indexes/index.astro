@@ -1,0 +1,24 @@
+---
+import Base from '../../layouts/Base.astro';
+import Basketball3D from '../../components/Basketball3D.astro';
+import Indexes from '../../islands/Indexes.tsx';
+---
+
+<Base
+  title="Indexes — elcourtside"
+  description="Euroleague play-by-play indexes you won't find elsewhere: clutch index, largest scoring runs, biggest blown leads, fouls drawn per possession."
+>
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Indexes</h1>
+      <p class="page-intro">
+        These aren't published anywhere — they're derived here by replaying every
+        play-by-play event of the season: who was on court, what the score was, and
+        how it moved.
+      </p>
+    </div>
+    <Basketball3D size={88} />
+  </div>
+
+  <Indexes client:load />
+</Base>

@@ -1,0 +1,23 @@
+---
+import Base from '../../layouts/Base.astro';
+import Basketball3D from '../../components/Basketball3D.astro';
+import Games from '../../islands/Games.tsx';
+---
+
+<Base
+  title="Games — elcourtside"
+  description="Euroleague schedule and results with full boxscores, per-game PIR and +/-, and a score worm rebuilt from play-by-play."
+>
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Games</h1>
+      <p class="page-intro">
+        Every finished game of the season. Open one for the boxscore, our PIR and
+        reconstructed +/- per player, and a score worm built from the play-by-play.
+      </p>
+    </div>
+    <Basketball3D size={88} />
+  </div>
+
+  <Games client:load />
+</Base>
