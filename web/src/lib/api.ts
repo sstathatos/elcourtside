@@ -23,6 +23,12 @@ export interface Season {
   computed_at: string | null;
 }
 
+export interface Club {
+  club_code: string;
+  club_name: string | null;
+  crest_url: string | null;
+}
+
 export interface StandingsRow {
   club_code: string;
   club_name: string | null;
@@ -199,6 +205,7 @@ export interface PlayerSeason {
   clutch_points: number | null;
   clutch_pm: number | null;
   fouls_drawn_per100: number | null;
+  headshot_url: string | null;
 }
 
 export interface PlayerGameLogRow {
@@ -221,6 +228,9 @@ export interface PlayerGameLogRow {
 
 export interface PlayerDetail extends PlayerSeason {
   games: PlayerGameLogRow[];
+  /** Null for players the registry has no photo for (~3%). */
+  headshot_url: string | null;
+  action_url: string | null;
 }
 
 export interface RunRow {
@@ -337,6 +347,7 @@ async function get<T>(path: string, params: Params = {}): Promise<T> {
 
 export const api = {
   seasons: () => get<Season[]>('/seasons'),
+  clubs: (season?: string) => get<Club[]>('/clubs', { season }),
   standings: (season?: string) => get<StandingsRow[]>('/standings', { season }),
   games: (p: { season?: string; round?: number; club?: string; limit?: number; offset?: number }) =>
     get<GameSummary[]>('/games', p),

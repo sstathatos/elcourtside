@@ -2,7 +2,16 @@
 
 import { api, num, shortDate, signClass, signed, type TeamSeason } from '../lib/api';
 import { setParam, useApi, useParam, useSeasons, useSort } from './hooks';
-import { BackLink, BoxscoreOnlyNote, Panel, SeasonPicker, Stat, Th } from './ui';
+import {
+  BackLink,
+  BoxscoreOnlyNote,
+  ClubLabel,
+  ClubsProvider,
+  Panel,
+  SeasonPicker,
+  Stat,
+  Th,
+} from './ui';
 import type { MetricKey } from '../lib/glossary';
 
 export default function Teams() {
@@ -33,7 +42,7 @@ function TeamTable() {
   const { sorted, toggle, ariaSort } = useSort<TeamSeason>(rows, 'wins');
 
   return (
-    <>
+    <ClubsProvider season={season}>
       <div className="controls">
         <SeasonPicker seasons={seasons} season={season} onChange={setSeason} />
         <span className="muted">Click a column to sort.</span>
@@ -64,7 +73,7 @@ function TeamTable() {
                 {sorted.map((t) => (
                   <tr key={t.club_code}>
                     <td>
-                      <a href={`/teams/?club=${t.club_code}`}>{t.club_name ?? t.club_code}</a>
+                      <ClubLabel code={t.club_code} name={t.club_name} />
                     </td>
                     {COLUMNS.map((c) => {
                       const v = t[c.key] as number | null;
@@ -88,19 +97,24 @@ function TeamTable() {
           </div>
         )}
       </Panel>
-    </>
+    </ClubsProvider>
   );
 }
 
 function TeamDetail({ club }: { club: string }) {
   const state = useApi(() => api.team(club), [club]);
+  // Same default the API applies when `season` is omitted, so the crests match
+  // the season the figures come from.
+  const { season } = useSeasons();
 
   return (
-    <>
+    <ClubsProvider season={season}>
       <BackLink onClick={() => setParam('club', null)}>all teams</BackLink>
       <Panel state={state} what="team">
         {(t) => (
           <>
+            {/* No crest here — the page header already shows this club's, and a
+                second one collided with the back link above. */}
             <h2 className="section-title">{t.club_name ?? t.club_code}</h2>
             <div className="stat-row">
               <Stat k="Record" v={`${t.wins ?? '—'}-${t.losses ?? '—'}`} />
@@ -131,8 +145,10 @@ function TeamDetail({ club }: { club: string }) {
                     <tr key={g.game_code}>
                       <td style={{ textAlign: 'left' }}>{shortDate(g.utc_date)}</td>
                       <td style={{ textAlign: 'left' }}>
-                        <span className="muted">{g.is_home ? 'vs' : '@'}</span>{' '}
-                        <a href={`/teams/?club=${g.opponent_code}`}>{g.opponent_code}</a>
+                        <span className="club">
+                          <span className="muted">{g.is_home ? 'vs' : '@'}</span>
+                          <ClubLabel code={g.opponent_code} />
+                        </span>
                       </td>
                       <td className={g.lost ? 'num neg' : 'num pos'}>
                         {g.lost ? 'L' : 'W'} {g.points}–{g.opponent_points}
@@ -152,6 +168,6 @@ function TeamDetail({ club }: { club: string }) {
           </>
         )}
       </Panel>
-    </>
+    </ClubsProvider>
   );
 }

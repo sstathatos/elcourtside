@@ -39,6 +39,19 @@ export function useApi<T>(fn: () => Promise<T>, deps: unknown[]): Async<T> {
   return state;
 }
 
+/**
+ * Club crests for a season, indexed by club code.
+ *
+ * One small request per season serves every crest on the page — the
+ * alternative, an image URL on every standings/teams/games row, would repeat
+ * the same 20 URLs across hundreds of rows and bloat responses the ETag layer
+ * works hard to keep cheap.
+ */
+export function useClubs(season: string | undefined) {
+  const { data } = useApi(() => (season ? api.clubs(season) : Promise.resolve([])), [season]);
+  return useMemo(() => new Map((data ?? []).map((c) => [c.club_code, c])), [data]);
+}
+
 /** The season list plus the currently selected code (defaults to newest). */
 export function useSeasons() {
   const { data: seasons, error } = useApi(() => api.seasons(), []);

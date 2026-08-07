@@ -86,6 +86,16 @@ def season_exists(conn, source: str, season_code: str) -> bool:
 
 # --- standings ---------------------------------------------------------------
 
+def clubs(conn, source: str, season_code: str) -> list[dict]:
+    """Club registry for a season — the crest lookup the UI resolves by code,
+    so no other endpoint has to carry an image URL on every row."""
+    return _rows(conn.execute(
+        """SELECT club_code, club_name, crest_url FROM clubs
+           WHERE source=? AND season_code=? ORDER BY club_code""",
+        (source, season_code),
+    ))
+
+
 def standings(conn, source: str, season_code: str) -> list[dict]:
     return _rows(conn.execute(
         """SELECT club_code, club_name, games, wins, losses,
@@ -274,11 +284,19 @@ def players(conn, source: str, season_code: str, *, sort: str = "pir_avg",
         where.append("clubs LIKE ?")
         params.append(f"%{club}%")
     params += [limit, offset]
+    # The portrait comes from a correlated subquery rather than a JOIN: a player
+    # has one `people` row per club/type, so joining would multiply the rows.
+    # Its placeholders sit in the SELECT list, so they bind ahead of the rest.
+    params = [source, season_code, *params]
     return _rows(conn.execute(
         f"""SELECT player_code, player_name, clubs, games_played, seconds, points,
                    reb_total, assists, steals, blocks_favour, turnovers, fouls_drawn,
                    pir_total, pir_avg, pir_per36, pm_total, pm_per36,
-                   clutch_seconds, clutch_points, clutch_pm, fouls_drawn_per100
+                   clutch_seconds, clutch_points, clutch_pm, fouls_drawn_per100,
+                   (SELECT p.headshot_url FROM people p
+                     WHERE p.source=? AND p.season_code=?
+                       AND p.person_code=player_season_metrics.player_code
+                       AND p.headshot_url IS NOT NULL LIMIT 1) AS headshot_url
             FROM player_season_metrics WHERE {' AND '.join(where)}
             ORDER BY {column} IS NULL, {column} {order}, player_code
             LIMIT ? OFFSET ?""",
@@ -294,6 +312,16 @@ def player(conn, source: str, season_code: str, player_code: str) -> dict | None
     if row is None:
         return None
     detail = dict(row)
+    # Portrait, if the registry has one. A player can appear under several
+    # club/type rows after a transfer; any row carries the same URLs.
+    portrait = conn.execute(
+        """SELECT headshot_url, action_url FROM people
+           WHERE source=? AND season_code=? AND person_code=?
+                 AND headshot_url IS NOT NULL LIMIT 1""",
+        (source, season_code, player_code),
+    ).fetchone()
+    detail["headshot_url"] = portrait["headshot_url"] if portrait else None
+    detail["action_url"] = portrait["action_url"] if portrait else None
     detail["games"] = _rows(conn.execute(
         """SELECT m.game_code, m.club_code, m.is_home, m.pir, m.pm_computed,
                   m.seconds_computed, m.fouls_drawn, m.clutch_pm,

@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { api, gameClock, mmss, num, signClass, signed } from '../lib/api';
 import { useApi, useSeasons } from './hooks';
-import { BoxscoreOnlyNote, Panel, SeasonPicker, Th } from './ui';
+import { BoxscoreOnlyNote, ClubLabel, ClubList, ClubsProvider, Panel, SeasonPicker, Th } from './ui';
 
 type Tab = 'runs' | 'leads' | 'clutch' | 'fouls';
 
@@ -42,7 +42,7 @@ export default function Indexes() {
   const active = TABS.find((t) => t.key === tab)!;
 
   return (
-    <>
+    <ClubsProvider season={season}>
       <div className="controls">
         <SeasonPicker seasons={seasons} season={season} onChange={setSeason} />
         {TABS.map((t) => (
@@ -65,7 +65,7 @@ export default function Indexes() {
       {tab === 'leads' && <Leads season={season} />}
       {tab === 'clutch' && <Clutch season={season} />}
       {tab === 'fouls' && <Fouls season={season} />}
-    </>
+    </ClubsProvider>
   );
 }
 
@@ -98,10 +98,10 @@ function Runs({ season }: { season: string | undefined }) {
                   <tr key={`${r.game_code}-${r.club_code}`}>
                     <td className="rank">{i + 1}</td>
                     <td style={{ textAlign: 'left' }}>
-                      <a href={`/teams/?club=${r.club_code}`}>{r.club_code}</a>
+                      <ClubLabel code={r.club_code} />
                     </td>
                     <td style={{ textAlign: 'left' }} className="muted">
-                      {r.opponent_code}
+                      <ClubLabel code={r.opponent_code} link={false} />
                     </td>
                     <td className="num">
                       <strong>{r.max_run}–0</strong>
@@ -148,10 +148,10 @@ function Leads({ season }: { season: string | undefined }) {
                 <tr key={`${r.game_code}-${r.club_code}`}>
                   <td className="rank">{i + 1}</td>
                   <td style={{ textAlign: 'left' }}>
-                    <a href={`/teams/?club=${r.club_code}`}>{r.club_code}</a>
+                    <ClubLabel code={r.club_code} />
                   </td>
                   <td style={{ textAlign: 'left' }} className="muted">
-                    {r.opponent_code}
+                    <ClubLabel code={r.opponent_code} link={false} />
                   </td>
                   <td className="num">
                     <strong>+{r.max_lead}</strong>
@@ -199,7 +199,7 @@ function Clutch({ season }: { season: string | undefined }) {
                       <tr key={p.player_code}>
                         <td>
                           <a href={`/players/?code=${p.player_code}`}>{p.player_name}</a>{' '}
-                          <span className="muted">{p.clubs}</span>
+                          <ClubList clubs={p.clubs} />
                         </td>
                         <td className="num">{mmss(p.clutch_seconds)}</td>
                         <td className="num">{p.clutch_points}</td>
@@ -226,7 +226,7 @@ function Clutch({ season }: { season: string | undefined }) {
                     {d.teams.map((t) => (
                       <tr key={t.club_code}>
                         <td>
-                          <a href={`/teams/?club=${t.club_code}`}>{t.club_name ?? t.club_code}</a>
+                          <ClubLabel code={t.club_code} name={t.club_name} />
                         </td>
                         <td className="num">{t.clutch_pts_for}</td>
                         <td className="num">{t.clutch_pts_against}</td>
@@ -271,7 +271,7 @@ function Fouls({ season }: { season: string | undefined }) {
                       <tr key={p.player_code}>
                         <td>
                           <a href={`/players/?code=${p.player_code}`}>{p.player_name}</a>{' '}
-                          <span className="muted">{p.clubs}</span>
+                          <ClubList clubs={p.clubs} />
                         </td>
                         <td className="num">{p.games_played}</td>
                         <td className="num">{p.fouls_drawn}</td>
@@ -299,7 +299,7 @@ function Fouls({ season }: { season: string | undefined }) {
                     {d.teams.map((t) => (
                       <tr key={t.club_code}>
                         <td>
-                          <a href={`/teams/?club=${t.club_code}`}>{t.club_name ?? t.club_code}</a>
+                          <ClubLabel code={t.club_code} name={t.club_name} />
                         </td>
                         <td className="num">{num(t.possessions_avg, 1)}</td>
                         <td className="num">

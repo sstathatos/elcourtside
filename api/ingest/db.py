@@ -144,7 +144,23 @@ CREATE TABLE IF NOT EXISTS people (
   country_code  TEXT,
   start_date    TEXT,
   end_date      TEXT,
+  -- Portrait URLs on the Euroleague CDN. Players only: every coach and staff
+  -- entry the API returns has an empty `images` object.
+  headshot_url  TEXT,
+  action_url    TEXT,
   PRIMARY KEY (source, season_code, person_code, club_code, type_code)
+);
+
+-- Club registry per season: name and crest URL, which the schedule payload
+-- carries on both sides of every game. Kept separate from `standings` so a
+-- club is known even before it has played.
+CREATE TABLE IF NOT EXISTS clubs (
+  source      TEXT NOT NULL,
+  season_code TEXT NOT NULL,
+  club_code   TEXT NOT NULL,
+  club_name   TEXT,
+  crest_url   TEXT,
+  PRIMARY KEY (source, season_code, club_code)
 );
 
 CREATE TABLE IF NOT EXISTS ingest_meta (
@@ -165,6 +181,22 @@ CREATE TABLE IF NOT EXISTS ingest_runs (
 """
 
 
+# Columns added to tables that predate them. `CREATE TABLE IF NOT EXISTS` is a
+# no-op on an existing table, so new columns have to be ALTERed in; SQLite has
+# no `ADD COLUMN IF NOT EXISTS`, hence the pragma check.
+_ADDED_COLUMNS = {
+    "people": [("headshot_url", "TEXT"), ("action_url", "TEXT")],
+}
+
+
+def migrate(conn: sqlite3.Connection) -> None:
+    for table, columns in _ADDED_COLUMNS.items():
+        have = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+        for name, decl in columns:
+            if name not in have:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+
+
 def connect(path: str, check_same_thread: bool = True) -> sqlite3.Connection:
     # check_same_thread=False is for the API tests, where one in-memory
     # database is shared with the TestClient's server thread.
@@ -173,6 +205,7 @@ def connect(path: str, check_same_thread: bool = True) -> sqlite3.Connection:
     conn.execute("PRAGMA journal_mode = WAL")
     conn.execute("PRAGMA synchronous = NORMAL")
     conn.executescript(SCHEMA)
+    migrate(conn)
     return conn
 
 
@@ -283,7 +316,7 @@ def replace_pbp_events(conn, source: str, season_code: str, game_code: int,
 PEOPLE_FIELDS = [
     "person_code", "club_code", "type_code", "name", "type_name", "active",
     "dorsal", "position", "position_name", "height", "birth_date",
-    "country_code", "start_date", "end_date",
+    "country_code", "start_date", "end_date", "headshot_url", "action_url",
 ]
 
 
@@ -291,6 +324,18 @@ def upsert_people(conn, source: str, season_code: str, rows: Iterable[dict]) -> 
     cols = ["source", "season_code", *PEOPLE_FIELDS]
     conn.executemany(
         f"INSERT OR REPLACE INTO people ({', '.join(cols)}) VALUES ({', '.join(':' + c for c in cols)})",
+        [{**r, "source": source, "season_code": season_code} for r in rows],
+    )
+
+
+CLUB_FIELDS = ["club_code", "club_name", "crest_url"]
+
+
+def upsert_clubs(conn, source: str, season_code: str, rows: Iterable[dict]) -> None:
+    """Crest URLs change rarely; a re-ingest is a no-op update like the rest."""
+    cols = ["source", "season_code", *CLUB_FIELDS]
+    conn.executemany(
+        f"INSERT OR REPLACE INTO clubs ({', '.join(cols)}) VALUES ({', '.join(':' + c for c in cols)})",
         [{**r, "source": source, "season_code": season_code} for r in rows],
     )
 

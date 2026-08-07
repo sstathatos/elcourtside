@@ -1,6 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
-import Basketball3D from '../../components/Basketball3D.astro';
+import { PlayerFaces } from '../../islands/HeaderArt.tsx';
 import Players from '../../islands/Players.tsx';
 ---
 
@@ -17,7 +17,7 @@ import Players from '../../islands/Players.tsx';
         play-by-play (2007-08 onward).
       </p>
     </div>
-    <Basketball3D size={88} />
+    <PlayerFaces client:load />
   </div>
 
   <Players client:load />

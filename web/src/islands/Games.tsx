@@ -8,7 +8,16 @@
 
 import { api, mmss, num, shortDate, signClass, signed, type BoxscoreLine } from '../lib/api';
 import { setParam, useApi, useParam, useSeasons } from './hooks';
-import { BackLink, BoxscoreOnlyNote, Panel, SeasonPicker, Stat, Th } from './ui';
+import {
+  BackLink,
+  BoxscoreOnlyNote,
+  ClubsProvider,
+  Crest,
+  Panel,
+  SeasonPicker,
+  Stat,
+  Th,
+} from './ui';
 import ScoreWorm from './ScoreWorm';
 
 export default function Games() {
@@ -24,7 +33,7 @@ function GameList() {
   );
 
   return (
-    <>
+    <ClubsProvider season={season}>
       <div className="controls">
         <SeasonPicker seasons={seasons} season={season} onChange={setSeason} />
         <span className="muted">Click a game for its boxscore and score worm.</span>
@@ -54,8 +63,17 @@ function GameList() {
                         {g.round}
                       </td>
                       <td style={{ textAlign: 'left' }}>
-                        <strong>{homeWon ? g.home_club_name : g.home_club_name}</strong>{' '}
-                        <span className="muted">vs</span> {g.away_club_name}
+                        <span className="club">
+                          <Crest code={g.home_club_code} />
+                          <strong style={homeWon ? undefined : { fontWeight: 400 }}>
+                            {g.home_club_name}
+                          </strong>
+                          <span className="muted">vs</span>
+                          <Crest code={g.away_club_code} />
+                          <span style={homeWon ? undefined : { fontWeight: 700 }}>
+                            {g.away_club_name}
+                          </span>
+                        </span>
                       </td>
                       <td className="num">
                         <strong>{g.home_score}</strong>–<strong>{g.away_score}</strong>
@@ -71,16 +89,17 @@ function GameList() {
           </div>
         )}
       </Panel>
-    </>
+    </ClubsProvider>
   );
 }
 
 function GameDetail({ code }: { code: number }) {
   const game = useApi(() => api.game(code), [code]);
   const timeline = useApi(() => api.timeline(code), [code]);
+  const { season } = useSeasons();
 
   return (
-    <>
+    <ClubsProvider season={season}>
       <BackLink onClick={() => setParam('code', null)}>all games</BackLink>
 
       <Panel state={game} what="game">
@@ -89,8 +108,10 @@ function GameDetail({ code }: { code: number }) {
           const away = g.team_metrics.find((t) => t.is_home === 0);
           return (
             <>
-              <h2 className="section-title">
+              <h2 className="section-title club">
+                <Crest code={g.home_club_code} size={24} />
                 {g.home_club_name} {g.home_score}–{g.away_score} {g.away_club_name}
+                <Crest code={g.away_club_code} size={24} />
               </h2>
               <p className="muted" style={{ marginBottom: '1.4rem' }}>
                 Round {g.round} · {shortDate(g.utc_date)} · game {g.game_code}
@@ -114,13 +135,13 @@ function GameDetail({ code }: { code: number }) {
                 <p className="note">No play-by-play for this game — boxscore only.</p>
               )}
 
-              <Side g={g} isHome={1} name={g.home_club_name} />
-              <Side g={g} isHome={0} name={g.away_club_name} />
+              <Side g={g} isHome={1} name={g.home_club_name} code={g.home_club_code} />
+              <Side g={g} isHome={0} name={g.away_club_name} code={g.away_club_code} />
             </>
           );
         }}
       </Panel>
-    </>
+    </ClubsProvider>
   );
 }
 
@@ -128,10 +149,12 @@ function Side({
   g,
   isHome,
   name,
+  code,
 }: {
   g: { boxscore: BoxscoreLine[]; player_metrics: Array<{ player_code: string; pir: number | null; pm_computed: number | null }> };
   isHome: 0 | 1;
   name: string | null;
+  code: string | null;
 }) {
   const metrics = new Map(g.player_metrics.map((m) => [m.player_code, m]));
   const lines = g.boxscore.filter((b) => b.is_home === isHome && b.entry_type === 'player');
@@ -139,7 +162,10 @@ function Side({
 
   return (
     <>
-      <h3 className="section-title">{name}</h3>
+      <h3 className="section-title club">
+        <Crest code={code} size={22} />
+        {name}
+      </h3>
       <div className="table-frame">
         <table>
           <thead>

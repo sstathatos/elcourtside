@@ -1,8 +1,135 @@
 /** Small presentational pieces every island shares. */
 
-import type { ReactNode } from 'react';
-import type { Season } from '../lib/api';
+import { createContext, useContext, useState, type ReactNode } from 'react';
+import type { Club, Season } from '../lib/api';
+import { useClubs } from './hooks';
 import { GLOSSARY, type MetricKey } from '../lib/glossary';
+
+/**
+ * Crest lookup for the island's current season.
+ *
+ * A context rather than a prop: clubs are named at every depth of these
+ * tables — rows, opponent cells, game sides, detail headings — and threading a
+ * map through all of them would touch every component in between.
+ */
+const ClubsContext = createContext<Map<string, Club>>(new Map());
+
+export function ClubsProvider({
+  season,
+  children,
+}: {
+  season: string | undefined;
+  children: ReactNode;
+}) {
+  const clubs = useClubs(season);
+  return <ClubsContext.Provider value={clubs}>{children}</ClubsContext.Provider>;
+}
+
+/**
+ * A club's crest. Renders nothing when the club has no crest or the CDN image
+ * fails, so a broken URL degrades to the plain name rather than a broken-image
+ * icon — the name beside it always carries the meaning.
+ */
+export function Crest({ code, size = 18 }: { code: string | null | undefined; size?: number }) {
+  const clubs = useContext(ClubsContext);
+  const [failed, setFailed] = useState(false);
+  const url = code ? clubs.get(code)?.crest_url : null;
+  if (!url || failed) return null;
+  return (
+    <img
+      className="crest"
+      src={url}
+      width={size}
+      height={size}
+      alt=""
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+/**
+ * The standard way a club is named anywhere on the site: crest then label,
+ * linking to the team page. `alt=""` on the crest is deliberate — the name is
+ * right there, so announcing the logo too would just repeat it.
+ */
+export function ClubLabel({
+  code,
+  name,
+  link = true,
+  size,
+}: {
+  code: string | null | undefined;
+  name?: string | null;
+  link?: boolean;
+  size?: number;
+}) {
+  const label = name ?? code ?? '—';
+  return (
+    <span className="club">
+      <Crest code={code} size={size} />
+      {link && code ? <a href={`/teams/?club=${code}`}>{label}</a> : <span>{label}</span>}
+    </span>
+  );
+}
+
+/** `clubs` is a comma-joined list — a player who transferred mid-season has two. */
+export function ClubList({ clubs, link = true }: { clubs: string | null; link?: boolean }) {
+  const codes = (clubs ?? '')
+    .split(',')
+    .map((c) => c.trim())
+    .filter(Boolean);
+  if (!codes.length) return <>—</>;
+  return (
+    <span className="club">
+      {codes.map((c) => (
+        <ClubLabel key={c} code={c} link={link} />
+      ))}
+    </span>
+  );
+}
+
+/** Stand-in for the ~3% of players with no photo, and anyone who isn't a player. */
+export function AvatarFallback({ size = 96 }: { size?: number }) {
+  return (
+    <svg
+      className="avatar"
+      width={size}
+      height={size}
+      viewBox="0 0 64 64"
+      role="img"
+      aria-label="No photo available"
+    >
+      <circle cx="32" cy="23" r="11" />
+      <path d="M8 62c0-13 11-22 24-22s24 9 24 22z" />
+    </svg>
+  );
+}
+
+/** A player portrait that falls back to the silhouette on a missing or dead URL. */
+export function PlayerPhoto({
+  src,
+  name,
+  size = 96,
+}: {
+  src: string | null | undefined;
+  name: string | null;
+  size?: number;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return <AvatarFallback size={size} />;
+  return (
+    <img
+      className="player-photo"
+      src={src}
+      width={size}
+      height={size}
+      alt={name ?? ''}
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 /**
  * Table header cell that explains its own abbreviation on hover.

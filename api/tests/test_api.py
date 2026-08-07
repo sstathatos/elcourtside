@@ -53,9 +53,25 @@ def api_conn():
                               parse_boxscore(load_fixture("game1_stats.json"), "IST", "TEL"))
     pbp_rows, _live = parse_pbp(load_fixture("game1_pbp.json"))
     db.replace_pbp_events(conn, SRC, SEASON, 1, pbp_rows)
+    # TEL deliberately has no crest: the null path has to survive the API.
+    db.upsert_clubs(conn, SRC, SEASON, [
+        {"club_code": "IST", "club_name": "Anadolu Efes Istanbul",
+         "crest_url": "https://cdn.example/ist.png"},
+        {"club_code": "TEL", "club_name": "Maccabi Tel Aviv", "crest_url": None},
+    ])
     conn.commit()
     engine.compute_season(conn, SRC, SEASON)
     return conn
+
+
+def _person(code: str, club: str, headshot: str | None) -> dict:
+    return {
+        "person_code": code, "club_code": club, "type_code": "J", "name": "X",
+        "type_name": "Player", "active": 1, "dorsal": "0", "position": 1,
+        "position_name": "G", "height": 200, "birth_date": None,
+        "country_code": "GRE", "start_date": None, "end_date": None,
+        "headshot_url": headshot, "action_url": headshot,
+    }
 
 
 @pytest.fixture
@@ -196,3 +212,46 @@ def test_backup_refuses_external_callers(api_conn):
     with TestClient(app, client=("8.8.8.8", 5000)) as external:
         assert external.get("/internal/backup.sqlite").status_code == 403
     app.dependency_overrides.clear()
+
+
+# --- crests and portraits ----------------------------------------------------
+
+def test_clubs_endpoint_carries_crests_and_tolerates_missing_ones(client):
+    rows = {c["club_code"]: c for c in client.get("/api/clubs").json()}
+    assert rows["IST"]["crest_url"] == "https://cdn.example/ist.png"
+    assert rows["IST"]["club_name"] == "Anadolu Efes Istanbul"
+    # a club the registry has no crest for still appears, just without an image
+    assert rows["TEL"]["crest_url"] is None
+
+
+def test_player_detail_exposes_headshot_and_action(client, api_conn, player_code):
+    db.upsert_people(api_conn, SRC, SEASON,
+                     [_person(player_code, "IST", "https://cdn.example/p.png")])
+    api_conn.commit()
+    cache.clear()
+    body = client.get(f"/api/players/{player_code}").json()
+    assert body["headshot_url"] == "https://cdn.example/p.png"
+    assert body["action_url"] == "https://cdn.example/p.png"
+
+
+def test_player_without_a_registry_photo_reports_null(client, player_code):
+    body = client.get(f"/api/players/{player_code}").json()
+    assert body["headshot_url"] is None
+    assert body["action_url"] is None
+
+
+def test_players_list_carries_headshots_without_duplicating_rows(
+        client, api_conn, player_code):
+    # a transferred player has one `people` row per club — the list must still
+    # return exactly one row for them (the reason the query uses a subquery
+    # rather than a JOIN)
+    db.upsert_people(api_conn, SRC, SEASON, [
+        _person(player_code, "IST", "https://cdn.example/p.png"),
+        _person(player_code, "TEL", "https://cdn.example/p.png"),
+    ])
+    api_conn.commit()
+    cache.clear()
+    rows = client.get("/api/players?limit=500").json()
+    assert [r["player_code"] for r in rows].count(player_code) == 1
+    hit = next(r for r in rows if r["player_code"] == player_code)
+    assert hit["headshot_url"] == "https://cdn.example/p.png"

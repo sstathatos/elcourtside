@@ -9,7 +9,18 @@
 import { useState } from 'react';
 import { api, mmss, num, shortDate, signClass, signed, type PlayerSort } from '../lib/api';
 import { setParam, useApi, useParam, useSeasons } from './hooks';
-import { BackLink, BoxscoreOnlyNote, Panel, SeasonPicker, Stat, Th } from './ui';
+import {
+  BackLink,
+  BoxscoreOnlyNote,
+  ClubLabel,
+  ClubList,
+  ClubsProvider,
+  Panel,
+  PlayerPhoto,
+  SeasonPicker,
+  Stat,
+  Th,
+} from './ui';
 
 export default function Players() {
   const code = useParam('code');
@@ -40,7 +51,7 @@ function PlayerTable() {
   );
 
   return (
-    <>
+    <ClubsProvider season={season}>
       <div className="controls">
         <SeasonPicker seasons={seasons} season={season} onChange={setSeason} />
         <label className="muted">
@@ -95,7 +106,7 @@ function PlayerTable() {
                       <a href={`/players/?code=${p.player_code}`}>{p.player_name}</a>
                     </td>
                     <td style={{ textAlign: 'left' }} className="muted">
-                      {p.clubs}
+                      <ClubList clubs={p.clubs} />
                     </td>
                     <td className="num">{p.games_played}</td>
                     <td className="num">{mmss((p.seconds ?? 0) / (p.games_played || 1))}</td>
@@ -116,23 +127,35 @@ function PlayerTable() {
           </div>
         )}
       </Panel>
-    </>
+    </ClubsProvider>
   );
 }
 
 function PlayerDetail({ code }: { code: string }) {
   const state = useApi(() => api.player(code), [code]);
+  const { season } = useSeasons();
 
   return (
-    <>
+    <ClubsProvider season={season}>
       <BackLink onClick={() => setParam('code', null)}>leaderboard</BackLink>
       <Panel state={state} what="player">
         {(p) => (
           <>
             <h2 className="section-title">{p.player_name ?? p.player_code}</h2>
             <p className="muted" style={{ marginBottom: '1.4rem' }}>
-              {p.clubs} · {p.games_played} games · {mmss(p.seconds)} on court
+              <ClubList clubs={p.clubs} /> · {p.games_played} games · {mmss(p.seconds)} on court
             </p>
+
+            <div className="player-shots">
+              <figure>
+                <PlayerPhoto src={p.headshot_url} name={p.player_name} />
+                <figcaption>Headshot</figcaption>
+              </figure>
+              <figure>
+                <PlayerPhoto src={p.action_url} name={p.player_name} />
+                <figcaption>Action</figcaption>
+              </figure>
+            </div>
 
             <div className="stat-row">
               <Stat k="PIR / game" v={num(p.pir_avg, 1)} />
@@ -164,8 +187,10 @@ function PlayerDetail({ code }: { code: string }) {
                     <tr key={g.game_code}>
                       <td style={{ textAlign: 'left' }}>{shortDate(g.utc_date)}</td>
                       <td style={{ textAlign: 'left' }}>
-                        <span className="muted">{g.is_home ? 'vs' : '@'}</span>{' '}
-                        <a href={`/teams/?club=${g.opponent_code}`}>{g.opponent_code}</a>
+                        <span className="club">
+                          <span className="muted">{g.is_home ? 'vs' : '@'}</span>
+                          <ClubLabel code={g.opponent_code} />
+                        </span>
                       </td>
                       <td className="num">{mmss(g.seconds_played)}</td>
                       <td className="num">{g.points}</td>
@@ -186,6 +211,6 @@ function PlayerDetail({ code }: { code: string }) {
           </>
         )}
       </Panel>
-    </>
+    </ClubsProvider>
   );
 }

@@ -1,6 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
-import Basketball3D from '../../components/Basketball3D.astro';
+import { TeamCrests } from '../../islands/HeaderArt.tsx';
 import Teams from '../../islands/Teams.tsx';
 ---
 
@@ -16,7 +16,7 @@ import Teams from '../../islands/Teams.tsx';
         biggest blown lead, clutch points and fouls drawn per 100 possessions.
       </p>
     </div>
-    <Basketball3D size={88} />
+    <TeamCrests client:load />
   </div>
 
   <Teams client:load />

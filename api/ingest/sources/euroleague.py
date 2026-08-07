@@ -197,6 +197,10 @@ def parse_people(items: list[dict]) -> list[dict]:
     rows = []
     for p in items:
         person = p.get("person") or {}
+        # `images` appears on both the entry and the nested person; the entry
+        # wins where both are set. Players carry headshot/action (identical
+        # URLs in practice); coaches and staff carry an empty object.
+        images = {**(person.get("images") or {}), **(p.get("images") or {})}
         rows.append({
             "person_code": normalize_person_code(person.get("code")),
             "club_code": (p.get("club") or {}).get("code") or "",
@@ -212,8 +216,29 @@ def parse_people(items: list[dict]) -> list[dict]:
             "country_code": (person.get("country") or {}).get("code"),
             "start_date": p.get("startDate"),
             "end_date": p.get("endDate"),
+            "headshot_url": images.get("headshot") or None,
+            "action_url": images.get("action") or None,
         })
     return rows
+
+
+def parse_clubs(items: list[dict]) -> list[dict]:
+    """Club registry from a schedule payload — every club appears on one side
+    or the other. Later rows win, so a club named differently mid-season keeps
+    its most recent name."""
+    clubs: dict[str, dict] = {}
+    for g in items:
+        for side in ("local", "road"):
+            club = (g.get(side) or {}).get("club") or {}
+            code = club.get("code")
+            if not code:
+                continue
+            clubs[code] = {
+                "club_code": code,
+                "club_name": club.get("name"),
+                "crest_url": (club.get("images") or {}).get("crest") or None,
+            }
+    return list(clubs.values())
 
 
 # -- source -------------------------------------------------------------------
@@ -256,6 +281,7 @@ class EuroleagueSource(Source):
         return FetchedList(
             raw_pages=[(f"{season_code}:{off}", raw) for off, raw in raw_pages],
             rows=parse_games(items, season_code),
+            clubs=parse_clubs(items),
         )
 
     def fetch_people(self, season_code: str) -> FetchedList:

@@ -20,6 +20,49 @@ from ingest.sources import euroleague as el
 log = logging.getLogger("ingest")
 
 
+def _load(payload: bytes) -> object | None:
+    try:
+        return json.loads(zlib.decompress(payload).decode("utf-8-sig"))
+    except (ValueError, zlib.error):
+        return None
+
+
+def _items(doc: object) -> list[dict]:
+    """Both list endpoints answer either bare or wrapped in {'data': [...]}."""
+    if isinstance(doc, dict):
+        doc = doc.get("data") or []
+    return [i for i in doc if isinstance(i, dict)] if isinstance(doc, list) else []
+
+
+def reparse_registries(conn, source: str, season_codes: list[str]) -> dict[str, int]:
+    """Re-derive the club and people registries — including image URLs, which
+    older ingests parsed past — from stored payloads. No network."""
+    counts = {"clubs": 0, "people": 0}
+    for season in season_codes:
+        rows = conn.execute(
+            """SELECT kind, key, payload FROM raw_payloads
+               WHERE source=? AND kind IN ('games', 'people') AND key LIKE ?""",
+            (source, f"{season}:%"),
+        ).fetchall()
+        with conn:
+            for r in rows:
+                doc = _load(r["payload"])
+                if doc is None:
+                    continue
+                items = _items(doc)
+                if r["kind"] == "games":
+                    clubs = el.parse_clubs(items)
+                    if clubs:
+                        db.upsert_clubs(conn, source, season, clubs)
+                        counts["clubs"] += len(clubs)
+                else:
+                    people = el.parse_people(items)
+                    if people:
+                        db.upsert_people(conn, source, season, people)
+                        counts["people"] += len(people)
+    return counts
+
+
 def reparse_details(conn, source: str, season_codes: list[str]) -> dict[str, int]:
     counts = {"boxscore": 0, "pbp": 0, "skipped": 0}
     for season in season_codes:

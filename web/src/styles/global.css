@@ -105,7 +105,47 @@ h3 {
   margin: 0.25rem 3.5rem 0 0;
 }
 
-/* the ball is decoration: first to go when the row gets tight */
+/* Teams and Players swap the ball for the page's own subject: the league's
+   crests, or the faces atop the leaderboard. */
+.head-art {
+  flex: none;
+  margin: 0.25rem 2rem 0 0;
+}
+
+.head-art-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.35rem;
+  width: 12.5rem;
+}
+
+.head-art-grid img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+
+.head-art-single img {
+  width: 6.5rem;
+  height: 6.5rem;
+  object-fit: contain;
+}
+
+/* faces overlap like a team sheet rather than sitting in a plain row */
+.head-faces {
+  display: flex;
+}
+
+.head-faces > * {
+  margin-left: -0.75rem;
+}
+
+.head-faces > *:first-child {
+  margin-left: 0;
+}
+
+/* the header art is decoration: first to go when the row gets tight */
 @media (max-width: 46rem) {
   .page-head .ball,
   .page-head .ball3d {
@@ -113,11 +153,20 @@ h3 {
     height: 3.5rem;
     margin-right: 1rem;
   }
+
+  .head-art {
+    margin-right: 1rem;
+  }
+
+  .head-art-grid {
+    width: 8.5rem;
+  }
 }
 
 @media (max-width: 30rem) {
   .page-head .ball,
-  .page-head .ball3d {
+  .page-head .ball3d,
+  .head-art {
     display: none;
   }
 }
@@ -311,6 +360,66 @@ td.neg {
 }
 
 .rank {
+  color: var(--text-muted);
+}
+
+/* --- club crests & player photos ------------------------------------------
+   Crests are transparent PNGs from the Euroleague CDN, hotlinked. They sit
+   inline with the club name and never change the row height. */
+
+.club {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.crest {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  /* crests are drawn for white backgrounds; contain keeps odd aspect ratios
+     from stretching, and the box never grows past the line height */
+  object-fit: contain;
+}
+
+.player-photo,
+.avatar {
+  display: block;
+  border: 2px solid var(--line);
+  background: var(--bg-raised);
+}
+
+.player-photo {
+  object-fit: cover;
+  object-position: top center;
+}
+
+/* the silhouette inherits the page ink at low contrast — a placeholder should
+   read as "no photo", not compete with the real ones */
+.avatar {
+  fill: var(--text-muted);
+  opacity: 0.55;
+  padding: 0.35rem;
+}
+
+.player-shots {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+  margin-bottom: 1.2rem;
+}
+
+.player-shots figure {
+  display: grid;
+  gap: 0.3rem;
+  justify-items: center;
+}
+
+.player-shots figcaption {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   color: var(--text-muted);
 }
 

@@ -82,6 +82,7 @@ def run(conn, source: Source, seasons: str = "latest",
             for key, raw in games.raw_pages:
                 db.store_raw(conn, source.name, "games", key, raw, fetched_at)
             db.upsert_games(conn, source.name, games.rows, fetched_at)
+            db.upsert_clubs(conn, source.name, season_code, games.clubs)
             conn.commit()
 
             if newest_played_only and not any(r["played"] for r in games.rows):

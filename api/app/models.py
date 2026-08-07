@@ -162,10 +162,21 @@ class PlayerSeason(BaseModel):
     clutch_points: int | None = None
     clutch_pm: int | None = None
     fouls_drawn_per100: float | None = None
+    headshot_url: str | None = None
 
 
 class PlayerDetail(PlayerSeason):
     games: list[dict]
+    # Null for the ~3% of players the registry has no photo for, and for
+    # everyone who is not a player (coaches and staff carry no images at all).
+    headshot_url: str | None = None
+    action_url: str | None = None
+
+
+class Club(BaseModel):
+    club_code: str
+    club_name: str | None = None
+    crest_url: str | None = None
 
 
 class RunRow(BaseModel):

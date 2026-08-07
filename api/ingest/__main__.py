@@ -43,7 +43,8 @@ def main(argv: list[str] | None = None) -> int:
         conn = db.connect(args.db)
         try:
             seasons = reparse.resolve_db_seasons(conn, args.source, args.seasons)
-            counts = reparse.reparse_details(conn, args.source, seasons)
+            counts = reparse.reparse_registries(conn, args.source, seasons)
+            counts |= reparse.reparse_details(conn, args.source, seasons)
         finally:
             conn.close()
         log.info("reparsed: %s", counts)

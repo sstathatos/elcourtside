@@ -16,6 +16,9 @@ class FetchedList:
     """Result of a list endpoint (seasons, games, people); may span pages."""
     raw_pages: list[tuple[str, bytes]] = field(default_factory=list)  # (raw key, body)
     rows: list[dict] = field(default_factory=list)
+    # Club registry, carried by the schedule payload (both sides of every
+    # game). Empty for list endpoints that say nothing about clubs.
+    clubs: list[dict] = field(default_factory=list)
 
 
 @dataclass

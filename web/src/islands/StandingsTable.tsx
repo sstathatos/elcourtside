@@ -2,14 +2,14 @@
 
 import { api, signClass, signed } from '../lib/api';
 import { useApi, useSeasons } from './hooks';
-import { Panel, SeasonPicker, Th } from './ui';
+import { ClubLabel, ClubsProvider, Panel, SeasonPicker, Th } from './ui';
 
 export default function StandingsTable() {
   const { seasons, season, setSeason } = useSeasons();
   const state = useApi(() => (season ? api.standings(season) : Promise.resolve([])), [season]);
 
   return (
-    <>
+    <ClubsProvider season={season}>
       <div className="controls">
         <SeasonPicker seasons={seasons} season={season} onChange={setSeason} />
         <span className="muted">Ranked by wins, then the Euroleague tiebreak chain.</span>
@@ -34,8 +34,10 @@ export default function StandingsTable() {
                 {rows.map((r) => (
                   <tr key={r.club_code}>
                     <td>
-                      <span className="rank">{r.rank}.</span>{' '}
-                      <a href={`/teams/?club=${r.club_code}`}>{r.club_name ?? r.club_code}</a>
+                      <span className="club">
+                        <span className="rank">{r.rank}.</span>
+                        <ClubLabel code={r.club_code} name={r.club_name} />
+                      </span>
                     </td>
                     <td className="num">{r.games}</td>
                     <td className="num">{r.wins}</td>
@@ -50,6 +52,6 @@ export default function StandingsTable() {
           </div>
         )}
       </Panel>
-    </>
+    </ClubsProvider>
   );
 }
