@@ -136,6 +136,7 @@ class TeamSeason(BaseModel):
 
 class TeamDetail(TeamSeason):
     games: list[dict]  # game log; shadows the season count on purpose
+    roster: list[dict] = []  # registered squad, including players yet to appear
 
 
 class PlayerSeason(BaseModel):

@@ -179,8 +179,26 @@ export interface TeamGameLogRow {
   opponent_points: number | null;
 }
 
+export interface RosterRow {
+  player_code: string;
+  player_name: string | null;
+  dorsal: string | null;
+  position_name: string | null;
+  height: number | null;
+  country_code: string | null;
+  birth_date: string | null;
+  headshot_url: string | null;
+  /** Null for a registered player who hasn't appeared in a game yet. */
+  games_played: number | null;
+  seconds: number | null;
+  points: number | null;
+  pir_avg: number | null;
+  pm_total: number | null;
+}
+
 export interface TeamDetail extends Omit<TeamSeason, 'games'> {
   games: TeamGameLogRow[];
+  roster: RosterRow[];
 }
 
 export interface PlayerSeason {

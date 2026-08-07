@@ -161,15 +161,14 @@ function PlayerDetail({ code }: { code: string }) {
                   {mmss(p.seconds)} on court
                 </p>
               </div>
+              {/* The registry exposes `headshot` and `action`, but every player's
+                  two URLs are byte-identical today, so showing both just repeated
+                  the same picture. The second appears only if they ever differ. */}
               <div className="player-shots">
-                <figure>
-                  <PlayerPhoto src={p.headshot_url} name={p.player_name} size={132} />
-                  <figcaption>Headshot</figcaption>
-                </figure>
-                <figure>
-                  <PlayerPhoto src={p.action_url} name={p.player_name} size={132} />
-                  <figcaption>Action</figcaption>
-                </figure>
+                <PlayerPhoto src={p.headshot_url} name={p.player_name} size={150} />
+                {p.action_url && p.action_url !== p.headshot_url && (
+                  <PlayerPhoto src={p.action_url} name={p.player_name} size={150} />
+                )}
               </div>
             </div>
 

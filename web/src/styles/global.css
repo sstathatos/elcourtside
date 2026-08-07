@@ -490,17 +490,20 @@ td.neg {
   flex: none;
 }
 
-.player-shots figure {
-  display: grid;
-  gap: 0.3rem;
-  justify-items: center;
+/* Roster portraits are row-height, so the 2px frame used on the player page
+   would swamp them. */
+.roster .player-photo,
+.roster .avatar {
+  border-width: 1px;
 }
 
-.player-shots figcaption {
-  font-size: 0.66rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-muted);
+.roster .avatar {
+  padding: 0.15rem;
+}
+
+.roster tbody td {
+  padding-top: 0.3rem;
+  padding-bottom: 0.3rem;
 }
 
 /* --- cards / stats -------------------------------------------------------- */

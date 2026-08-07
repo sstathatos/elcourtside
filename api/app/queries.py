@@ -253,6 +253,26 @@ def team(conn, source: str, season_code: str, club_code: str) -> dict | None:
     if row is None:
         return None
     detail = dict(row)
+    # The squad as registered, from the people registry rather than from who
+    # happened to appear in a boxscore — so a signing who has not played yet
+    # still shows, with empty stat columns. LEFT JOIN for the same reason.
+    # Shirt numbers are text in the source ('0', '10', '7'), so they are cast
+    # for ordering; anything non-numeric sinks to the bottom.
+    detail["roster"] = _rows(conn.execute(
+        """SELECT p.person_code AS player_code, p.name AS player_name, p.dorsal,
+                  p.position_name, p.height, p.country_code, p.birth_date,
+                  p.headshot_url,
+                  m.games_played, m.seconds, m.points, m.pir_avg, m.pm_total
+           FROM people p
+           LEFT JOIN player_season_metrics m
+                  ON m.source=p.source AND m.season_code=p.season_code
+                 AND m.player_code=p.person_code
+           WHERE p.source=? AND p.season_code=? AND p.club_code=? AND p.type_code='J'
+           ORDER BY CASE WHEN p.dorsal GLOB '[0-9]*'
+                         THEN CAST(p.dorsal AS INTEGER) ELSE 9999 END,
+                    p.name""",
+        (source, season_code, club_code),
+    ))
     detail["games"] = _rows(conn.execute(
         """SELECT m.game_code, m.is_home, m.points, m.possessions, m.fouls_drawn,
                   m.max_run, m.max_lead, m.lost, m.clutch_pm,

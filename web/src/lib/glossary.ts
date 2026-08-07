@@ -11,6 +11,10 @@ export const GLOSSARY = {
   // identity
   club: 'Club, as ranked by the standings',
   player: 'Player name — open for the full season and game log',
+  dorsal: 'Shirt number as registered for the season',
+  pos: 'Registered position: guard, forward or centre',
+  height: 'Height in centimetres, as listed in the club registration',
+  country: 'Country on the player registration, which is not always their birthplace',
   opponent: 'Opposing club in this game',
   date: 'Tip-off date (UTC)',
   round: 'Regular-season round number',

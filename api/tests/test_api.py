@@ -255,3 +255,31 @@ def test_players_list_carries_headshots_without_duplicating_rows(
     assert [r["player_code"] for r in rows].count(player_code) == 1
     hit = next(r for r in rows if r["player_code"] == player_code)
     assert hit["headshot_url"] == "https://cdn.example/p.png"
+
+
+def test_team_roster_lists_the_registered_squad(client, api_conn):
+    # 7 has no metrics row: a signing who has not played yet must still appear
+    db.upsert_people(api_conn, SRC, SEASON, [
+        {**_person("111111", "IST", None), "name": "SUB, TEN", "dorsal": "10"},
+        {**_person("222222", "IST", None), "name": "SUB, TWO", "dorsal": "2"},
+        {**_person("333333", "TEL", None), "name": "OTHER, CLUB", "dorsal": "5"},
+    ])
+    api_conn.commit()
+    cache.clear()
+    roster = client.get("/api/teams/IST").json()["roster"]
+    names = [r["player_name"] for r in roster]
+    # only this club's players, shirt numbers ordered numerically not as text
+    assert "OTHER, CLUB" not in names
+    assert [r["dorsal"] for r in roster if r["dorsal"] in {"2", "10"}] == ["2", "10"]
+    unplayed = next(r for r in roster if r["player_name"] == "SUB, TEN")
+    assert unplayed["games_played"] is None
+
+
+def test_response_shape_version_changes_the_etag(client, monkeypatch):
+    before = client.get("/api/teams/IST").headers["etag"]
+    # a shape change with no recompute must still retire cached copies,
+    # otherwise browsers revalidate into a 304 and keep the old body forever
+    monkeypatch.setattr(cache, "SCHEMA_VERSION", "test-next")
+    cache.clear()
+    after = client.get("/api/teams/IST").headers["etag"]
+    assert before != after

@@ -1,6 +1,6 @@
 /** Teams: season table sorted client-side, plus one club behind ?club=CODE. */
 
-import { api, num, shortDate, signClass, signed, type TeamSeason } from '../lib/api';
+import { api, mmss, num, shortDate, signClass, signed, type TeamSeason } from '../lib/api';
 import { setParam, useApi, useParam, useSeasons, useSort } from './hooks';
 import {
   BackLink,
@@ -8,6 +8,7 @@ import {
   ClubLabel,
   ClubsProvider,
   Panel,
+  PlayerPhoto,
   SeasonPicker,
   Stat,
   Th,
@@ -123,6 +124,65 @@ function TeamDetail({ club }: { club: string }) {
               <Stat k="Fouls drawn /100" v={num(t.fouls_drawn_per100, 1)} />
               <Stat k="Biggest run" v={t.max_run ?? '—'} />
               <Stat k="Biggest blown lead" v={t.max_blown_lead ?? '—'} />
+            </div>
+
+            <h3 className="section-title">Roster</h3>
+            <div className="table-frame">
+              <table className="roster">
+                <thead>
+                  <tr>
+                    <Th metric="dorsal" label="#" left />
+                    <Th metric="player" label="Player" left />
+                    <Th metric="pos" label="Pos" left />
+                    <Th metric="height" label="Ht" />
+                    <Th metric="country" label="Nat" left />
+                    <Th metric="gp" label="GP" />
+                    <Th metric="min" label="Min/g" />
+                    <Th metric="pts" label="Pts" />
+                    <Th metric="pir_avg" label="PIR/g" alignEnd />
+                    <Th metric="pm_total" label="+/-" alignEnd />
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* `?? []` is not defensive noise: a browser holding a cached
+                      response from before this field existed would otherwise
+                      throw here and blank the whole page. */}
+                  {(t.roster ?? []).map((p) => (
+                    <tr key={p.player_code}>
+                      <td className="rank" style={{ textAlign: 'left' }}>
+                        {p.dorsal || '—'}
+                      </td>
+                      <td>
+                        <span className="club">
+                          <PlayerPhoto src={p.headshot_url} name={p.player_name} size={30} />
+                          <a href={`/players/?code=${p.player_code}`}>{p.player_name}</a>
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'left' }} className="muted">
+                        {p.position_name ?? '—'}
+                      </td>
+                      <td className="num">{p.height ? `${p.height}` : '—'}</td>
+                      <td style={{ textAlign: 'left' }} className="muted">
+                        {p.country_code ?? '—'}
+                      </td>
+                      {/* a registered player who has not appeared yet has no
+                          metrics row — em dashes rather than zeros, which would
+                          read as "played and scored nothing" */}
+                      <td className="num">{p.games_played ?? '—'}</td>
+                      <td className="num">
+                        {p.games_played ? mmss((p.seconds ?? 0) / p.games_played) : '—'}
+                      </td>
+                      <td className="num">{p.points ?? '—'}</td>
+                      <td className="num">
+                        <strong>{p.games_played ? num(p.pir_avg, 1) : '—'}</strong>
+                      </td>
+                      <td className={signClass(p.pm_total)}>
+                        {p.games_played ? signed(p.pm_total) : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
 
             <h3 className="section-title">Game log</h3>

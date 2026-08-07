@@ -29,6 +29,13 @@ from typing import Any
 MAX_ENTRIES = 512
 _STAMP_TTL = 5.0  # seconds to reuse a computed_at lookup across a burst
 
+# Bump whenever a response's *shape* changes — a new field, a renamed one, a
+# different nesting. The data version cannot catch that: adding `roster` to the
+# team detail left computed_at untouched, so the ETag was unchanged, and every
+# browser holding a pre-roster copy revalidated into a 304 and kept serving it
+# indefinitely. Folding this into the key and the ETag retires those copies.
+SCHEMA_VERSION = "2"
+
 _entries: OrderedDict[tuple, Any] = OrderedDict()
 _stamps: dict[tuple[str, str], tuple[float, str]] = {}
 _lock = threading.Lock()
@@ -59,7 +66,7 @@ def ttl_version(seconds: int) -> str:
 
 def get_or_compute(key: tuple, version: str, producer: Callable[[], Any]) -> Any:
     global hits, misses
-    full_key = (*key, version)
+    full_key = (*key, version, SCHEMA_VERSION)
     with _lock:
         if full_key in _entries:
             _entries.move_to_end(full_key)
@@ -76,8 +83,8 @@ def get_or_compute(key: tuple, version: str, producer: Callable[[], Any]) -> Any
 
 
 def etag(key: tuple, version: str) -> str:
-    """Weak-ish validator: same route+params+data version → same tag."""
-    raw = repr((*key, version)).encode()
+    """Weak-ish validator: same route+params+data version+shape → same tag."""
+    raw = repr((*key, version, SCHEMA_VERSION)).encode()
     return '"' + hashlib.sha256(raw).hexdigest()[:32] + '"'
 
 
