@@ -1,0 +1,26 @@
+---
+import Base from '../../layouts/Base.astro';
+import Basketball3D from '../../components/Basketball3D.astro';
+---
+
+<Base
+  title="About — elcourtside"
+  description="About elcourtside: a Euroleague statistics site computed from raw boxscores and play-by-play, built by the author of sstathatos.dev."
+>
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">About</h1>
+      <p class="page-intro">
+        elcourtside is a side project: a Euroleague statistics site that ingests
+        the competition's public data nightly and computes every figure locally,
+        from raw boxscores and play-by-play, rather than copying published
+        numbers.
+      </p>
+      <p class="page-intro">
+        It's built and run by the author of <a href="https://sstathatos.dev">sstathatos.dev</a>,
+        alongside the rest of the things there.
+      </p>
+    </div>
+    <Basketball3D size={88} />
+  </div>
+</Base>

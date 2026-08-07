@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Basketball3D from '../../components/Basketball3D.astro';
+import { GameTeams } from '../../islands/HeaderArt.tsx';
 import Games from '../../islands/Games.tsx';
 ---
 
@@ -8,6 +9,15 @@ import Games from '../../islands/Games.tsx';
   title="Games — elcourtside"
   description="Euroleague schedule and results with full boxscores, per-game PIR and +/-, and a score worm rebuilt from play-by-play."
 >
+  <script is:inline>
+    // A game's view shows the two clubs' crests instead of the basketball.
+    // Set before the header is parsed, so opening a game link directly never
+    // flashes the ball first.
+    if (new URLSearchParams(location.search).has('code')) {
+      document.documentElement.dataset.gameView = 'detail';
+    }
+  </script>
+
   <div class="page-head">
     <div>
       <h1 class="page-title">Games</h1>
@@ -17,6 +27,7 @@ import Games from '../../islands/Games.tsx';
       </p>
     </div>
     <Basketball3D size={88} />
+    <GameTeams client:load />
   </div>
 
   <Games client:load />

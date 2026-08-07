@@ -39,6 +39,9 @@ export function Crest({ code, size = 18 }: { code: string | null | undefined; si
     <img
       className="crest"
       src={url}
+      // inline, not a CSS class: a fixed `.crest` size would override the
+      // attributes and pin every crest to the inline-text size
+      style={{ width: size, height: size }}
       width={size}
       height={size}
       alt=""

@@ -10,8 +10,9 @@ interface Props {
 }
 
 const { title, description } = Astro.props;
+// No "Home" entry on purpose: the wordmark is the way back to the landing page.
 const nav = [
-  { href: '/', label: 'Standings' },
+  { href: '/standings/', label: 'Standings' },
   { href: '/games/', label: 'Games' },
   { href: '/teams/', label: 'Teams' },
   { href: '/players/', label: 'Players' },
@@ -36,13 +37,6 @@ const path = Astro.url.pathname;
     </script>
   </head>
   <body>
-    <div class="topbar">
-      <div class="container topbar-inner">
-        <span>EUROLEAGUE STATS</span>
-        <a href="https://sstathatos.dev">SSTATHATOS.DEV</a>
-      </div>
-    </div>
-
     <header class="container site-header">
       <a class="logo" href="/">
         <Basketball size={20} class="logo-ball" />
@@ -57,6 +51,9 @@ const path = Astro.url.pathname;
           ))
         }
       </nav>
+      <a class="about-link" href="/about/" aria-current={path === '/about/' ? 'page' : undefined}
+        >About</a
+      >
       <button id="theme-toggle" aria-label="Toggle dark mode" title="Toggle theme">&gt;/&lt;</button>
     </header>
 
@@ -85,25 +82,6 @@ const path = Astro.url.pathname;
 </html>
 
 <style>
-  .topbar {
-    border-bottom: 1px solid var(--line);
-    font-size: 0.72rem;
-    letter-spacing: 0.08em;
-  }
-
-  .topbar-inner {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 0 1rem;
-    padding-top: 0.45rem;
-    padding-bottom: 0.45rem;
-  }
-
-  .topbar a {
-    text-decoration: none;
-  }
-
   .site-header {
     display: flex;
     align-items: center;
@@ -157,6 +135,23 @@ const path = Astro.url.pathname;
     text-decoration-color: var(--accent);
   }
 
+  /* Sits with the theme toggle rather than in the nav: it is about the site,
+     not another slice of the data. */
+  .about-link {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    text-decoration-thickness: 1px;
+  }
+
+  .about-link:hover,
+  .about-link[aria-current='page'] {
+    text-decoration-thickness: 3px;
+    text-decoration-color: var(--accent);
+  }
+
   #theme-toggle {
     background: none;
     color: var(--text);
@@ -201,8 +196,12 @@ const path = Astro.url.pathname;
       gap: 0.5rem 1.1rem;
     }
 
-    #theme-toggle {
+    /* nav drops to its own row, so About and the toggle group at the right of
+       the first one instead of trailing the wordmark */
+    .about-link {
       margin-left: auto;
+      font-size: 0.76rem;
+      letter-spacing: 0.06em;
     }
 
     nav a {

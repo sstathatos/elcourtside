@@ -1,0 +1,24 @@
+---
+import Base from '../../layouts/Base.astro';
+import Basketball3D from '../../components/Basketball3D.astro';
+import StandingsTable from '../../islands/StandingsTable.tsx';
+---
+
+<Base
+  title="Standings — elcourtside"
+  description="Euroleague standings computed from results with the official tiebreak chain: wins, losses and point differential."
+>
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Standings</h1>
+      <p class="page-intro">
+        Computed from results, not scraped: wins, losses and point differential with
+        the Euroleague tiebreak chain (head-to-head record, head-to-head difference,
+        overall difference, points scored).
+      </p>
+    </div>
+    <Basketball3D size={88} />
+  </div>
+
+  <StandingsTable client:load />
+</Base>

@@ -6,7 +6,7 @@
  * the enum the API accepts.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, mmss, num, shortDate, signClass, signed, type PlayerSort } from '../lib/api';
 import { setParam, useApi, useParam, useSeasons } from './hooks';
 import {
@@ -24,6 +24,16 @@ import {
 
 export default function Players() {
   const code = useParam('code');
+
+  // Keeps the page's own header hidden while a player is open. The inline
+  // script in players/index.astro sets this for the first paint; this keeps it
+  // right as the reader moves between the leaderboard and a player.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (code) root.dataset.playerView = 'detail';
+    else delete root.dataset.playerView;
+  }, [code]);
+
   return code ? <PlayerDetail code={code} /> : <PlayerTable />;
 }
 
@@ -141,23 +151,29 @@ function PlayerDetail({ code }: { code: string }) {
       <Panel state={state} what="player">
         {(p) => (
           <>
-            <h2 className="section-title">{p.player_name ?? p.player_code}</h2>
-            <p className="muted" style={{ marginBottom: '1.4rem' }}>
-              <ClubList clubs={p.clubs} /> · {p.games_played} games · {mmss(p.seconds)} on court
-            </p>
-
-            <div className="player-shots">
-              <figure>
-                <PlayerPhoto src={p.headshot_url} name={p.player_name} />
-                <figcaption>Headshot</figcaption>
-              </figure>
-              <figure>
-                <PlayerPhoto src={p.action_url} name={p.player_name} />
-                <figcaption>Action</figcaption>
-              </figure>
+            {/* This player's own header, in place of the leaderboard's:
+                name and figures at full size, portraits off to the side. */}
+            <div className="player-head">
+              <div className="player-head-main">
+                <h1 className="player-name">{p.player_name ?? p.player_code}</h1>
+                <p className="muted player-meta">
+                  <ClubList clubs={p.clubs} /> · {p.games_played} games ·{' '}
+                  {mmss(p.seconds)} on court
+                </p>
+              </div>
+              <div className="player-shots">
+                <figure>
+                  <PlayerPhoto src={p.headshot_url} name={p.player_name} size={132} />
+                  <figcaption>Headshot</figcaption>
+                </figure>
+                <figure>
+                  <PlayerPhoto src={p.action_url} name={p.player_name} size={132} />
+                  <figcaption>Action</figcaption>
+                </figure>
+              </div>
             </div>
 
-            <div className="stat-row">
+            <div className="stat-row stat-row-lg">
               <Stat k="PIR / game" v={num(p.pir_avg, 1)} />
               <Stat k="PIR / 36" v={num(p.pir_per36, 1)} />
               <Stat k="+/- total" v={signed(p.pm_total)} />

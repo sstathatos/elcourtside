@@ -1,24 +1,83 @@
 ---
 import Base from '../layouts/Base.astro';
 import Basketball3D from '../components/Basketball3D.astro';
-import StandingsTable from '../islands/StandingsTable.tsx';
+import SeasonSummary from '../islands/SeasonSummary.tsx';
+
+// Mirrors the header nav, minus the landing page itself. Each card says what
+// the section answers, not just what it is called.
+const sections = [
+  {
+    href: '/standings/',
+    title: 'Standings',
+    body: 'The table, ordered by the official tiebreak chain — head-to-head record first, then head-to-head difference, then overall difference.',
+  },
+  {
+    href: '/games/',
+    title: 'Games',
+    body: 'Every game of the season with its boxscore, and a score worm reconstructed from the play-by-play showing how the margin actually moved.',
+  },
+  {
+    href: '/teams/',
+    title: 'Teams',
+    body: 'Pace, fouls drawn per 100 possessions, biggest run, biggest blown lead and clutch scoring — per club, per season.',
+  },
+  {
+    href: '/players/',
+    title: 'Players',
+    body: 'PIR per game and per 36 minutes, plus/minus rebuilt from substitutions, clutch minutes and fouls drawn.',
+  },
+  {
+    href: '/indexes/',
+    title: 'Indexes',
+    body: 'The numbers published nowhere else: scoring runs, blown leads, clutch performance and fouls drawn per possession.',
+  },
+];
 ---
 
 <Base
-  title="elcourtside — Euroleague standings & stats"
-  description="Euroleague standings, boxscores, PIR and +/- leaderboards, plus play-by-play indexes: clutch, scoring runs, blown leads, fouls drawn per possession."
+  title="elcourtside — Euroleague stats, computed from the play-by-play"
+  description="A Euroleague statistics site: standings, boxscores, PIR and +/- leaderboards, and play-by-play indexes — clutch, scoring runs, blown leads and fouls drawn per possession."
 >
   <div class="page-head">
     <div>
-      <h1 class="page-title">Standings</h1>
+      <h1 class="page-title">Euroleague, measured</h1>
       <p class="page-intro">
-        Computed from results, not scraped: wins, losses and point differential with
-        the Euroleague tiebreak chain (head-to-head record, head-to-head difference,
-        overall difference, points scored).
+        elcourtside is a statistics site for the EuroLeague, built on the
+        competition's own public data. Every figure here is computed locally from
+        raw boxscores and play-by-play events — none of it is copied from a
+        published stats page.
       </p>
     </div>
     <Basketball3D size={88} />
   </div>
 
-  <StandingsTable client:load />
+  <SeasonSummary client:load />
+
+  <h2 class="section-title">Where to start</h2>
+  <div class="section-grid">
+    {
+      sections.map((s) => (
+        <a class="section-card" href={s.href}>
+          <span class="section-card-title">{s.title}</span>
+          <span class="section-card-body">{s.body}</span>
+        </a>
+      ))
+    }
+  </div>
+
+  <h2 class="section-title">How the numbers are made</h2>
+  <div class="two-col">
+    <p class="muted">
+      Games are pulled from the public Euroleague API on a nightly schedule and
+      stored raw, exactly as served. Every metric is then derived from those
+      stored bytes, so a corrected formula is a recomputation rather than a
+      re-download.
+    </p>
+    <p class="muted">
+      PIR follows the official formula from the boxscore. Plus/minus is not
+      published per player, so it is reconstructed by tracking substitutions
+      through the play-by-play — which means it exists only for seasons that have
+      play-by-play, from 2007-08 onward.
+    </p>
+  </div>
 </Base>

@@ -8,8 +8,9 @@
  * row of broken images.
  */
 
+import { useEffect } from 'react';
 import { api } from '../lib/api';
-import { useApi, useParam, useSeasons } from './hooks';
+import { useApi, useClubs, useParam, useSeasons } from './hooks';
 import { PlayerPhoto } from './ui';
 
 /** Every club's crest, or just one club's on a team detail view. */
@@ -34,6 +35,46 @@ export function TeamCrests() {
       {clubs.map((c) => (
         <img key={c.club_code} src={c.crest_url!} alt="" title={c.club_name ?? c.club_code} loading="lazy" />
       ))}
+    </div>
+  );
+}
+
+/**
+ * The two clubs of the game being viewed, in place of the basketball.
+ *
+ * Only renders on a game detail view (?code=N); the schedule keeps the ball.
+ * Re-requesting the game here is free — the Games island has already fetched
+ * it, and the API's max-age makes the second call a browser cache hit.
+ */
+export function GameTeams() {
+  const code = useParam('code');
+  const { season } = useSeasons();
+  const clubs = useClubs(season);
+  const state = useApi(
+    () => (code ? api.game(Number(code)) : Promise.resolve(null)),
+    [code],
+  );
+
+  // Hides the basketball while a game is open. The inline script in
+  // games/index.astro covers the first paint; this keeps it in step as the
+  // reader moves between the schedule and a game.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (code) root.dataset.gameView = 'detail';
+    else delete root.dataset.gameView;
+  }, [code]);
+
+  const g = state.data;
+  if (!code || !g) return null;
+  const home = clubs.get(g.home_club_code ?? '')?.crest_url;
+  const away = clubs.get(g.away_club_code ?? '')?.crest_url;
+  if (!home && !away) return null;
+
+  return (
+    <div className="head-art game-teams">
+      {home && <img src={home} alt={g.home_club_name ?? ''} />}
+      <span className="vs">VS</span>
+      {away && <img src={away} alt={g.away_club_name ?? ''} />}
     </div>
   );
 }

@@ -108,10 +108,8 @@ function GameDetail({ code }: { code: number }) {
           const away = g.team_metrics.find((t) => t.is_home === 0);
           return (
             <>
-              <h2 className="section-title club">
-                <Crest code={g.home_club_code} size={24} />
+              <h2 className="section-title">
                 {g.home_club_name} {g.home_score}–{g.away_score} {g.away_club_name}
-                <Crest code={g.away_club_code} size={24} />
               </h2>
               <p className="muted" style={{ marginBottom: '1.4rem' }}>
                 Round {g.round} · {shortDate(g.utc_date)} · game {g.game_code}
@@ -135,8 +133,8 @@ function GameDetail({ code }: { code: number }) {
                 <p className="note">No play-by-play for this game — boxscore only.</p>
               )}
 
-              <Side g={g} isHome={1} name={g.home_club_name} code={g.home_club_code} />
-              <Side g={g} isHome={0} name={g.away_club_name} code={g.away_club_code} />
+              <Side g={g} isHome={1} name={g.home_club_name} />
+              <Side g={g} isHome={0} name={g.away_club_name} />
             </>
           );
         }}
@@ -149,12 +147,10 @@ function Side({
   g,
   isHome,
   name,
-  code,
 }: {
   g: { boxscore: BoxscoreLine[]; player_metrics: Array<{ player_code: string; pir: number | null; pm_computed: number | null }> };
   isHome: 0 | 1;
   name: string | null;
-  code: string | null;
 }) {
   const metrics = new Map(g.player_metrics.map((m) => [m.player_code, m]));
   const lines = g.boxscore.filter((b) => b.is_home === isHome && b.entry_type === 'player');
@@ -162,10 +158,7 @@ function Side({
 
   return (
     <>
-      <h3 className="section-title club">
-        <Crest code={code} size={22} />
-        {name}
-      </h3>
+      <h3 className="section-title">{name}</h3>
       <div className="table-frame">
         <table>
           <thead>

@@ -8,6 +8,15 @@ import Players from '../../islands/Players.tsx';
   title="Players — elcourtside"
   description="Euroleague player leaderboards: PIR per game and per 36 minutes, plus/minus reconstructed from play-by-play, clutch and fouls drawn."
 >
+  <script is:inline>
+    // A single player's view carries its own header, so the leaderboard's is
+    // hidden. Set before the header is parsed, so following a link straight to
+    // ?code= never flashes the list heading first.
+    if (new URLSearchParams(location.search).has('code')) {
+      document.documentElement.dataset.playerView = 'detail';
+    }
+  </script>
+
   <div class="page-head">
     <div>
       <h1 class="page-title">Players</h1>
