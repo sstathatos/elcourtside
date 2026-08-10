@@ -1,0 +1,10 @@
+# Build context is web/. node_modules is reinstalled from the lockfile inside
+# the image, and dist/ is rebuilt — shipping either would be slower and could
+# leak a stale build into the image.
+node_modules/
+dist/
+.astro/
+*.log
+
+# Compose-only nginx config: mounted at run time, not baked in.
+nginx.local.conf

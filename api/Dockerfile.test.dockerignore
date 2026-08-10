@@ -1,0 +1,18 @@
+# Context rules for the TEST image (BuildKit reads this because it sits
+# beside Dockerfile.test). The difference from .dockerignore is one line:
+# tests/ is NOT excluded here — it is the entire point of this image.
+
+# The database is still excluded: tests build their own in-memory one from
+# the fixtures, and shipping 40 MB into the context would slow every run.
+data/
+*.db
+*.db-shm
+*.db-wal
+*.log
+
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/

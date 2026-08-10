@@ -1,0 +1,17 @@
+# Build context is api/. The database alone is ~40 MB and belongs on a
+# volume, never in a build context.
+data/
+*.db
+*.db-shm
+*.db-wal
+*.log
+
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+
+# Tests run in CI, not from the image.
+tests/

@@ -1,0 +1,15 @@
+# Context rules for the TEST image (BuildKit reads this because it sits
+# beside Dockerfile.test).
+#
+# Same exclusions as the production context — node_modules is reinstalled from
+# the lockfile and dist/ is rebuilt — but the test files themselves are source
+# and were never excluded, so this stays deliberately close to .dockerignore.
+# It exists as its own file so the two can diverge without one silently
+# changing the other.
+node_modules/
+dist/
+.astro/
+*.log
+
+# Only used by compose at run time.
+nginx.local.conf
