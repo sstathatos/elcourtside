@@ -21,6 +21,7 @@ import {
   Stat,
   Th,
 } from './ui';
+import Radar from './Radar';
 
 export default function Players() {
   const code = useParam('code');
@@ -172,13 +173,16 @@ function PlayerDetail({ code }: { code: string }) {
               </div>
             </div>
 
-            <div className="stat-row stat-row-lg">
+            <div className="detail-split">
+              <div className="stat-row stat-row-lg">
               <Stat k="PIR / game" v={num(p.pir_avg, 1)} />
               <Stat k="PIR / 36" v={num(p.pir_per36, 1)} />
               <Stat k="+/- total" v={signed(p.pm_total)} />
               <Stat k="+/- per 36" v={num(p.pm_per36, 1)} />
-              <Stat k="Clutch +/-" v={signed(p.clutch_pm)} />
-              <Stat k="Fouls drawn /100" v={num(p.fouls_drawn_per100, 1)} />
+                <Stat k="Clutch +/-" v={signed(p.clutch_pm)} />
+                <Stat k="Fouls drawn /100" v={num(p.fouls_drawn_per100, 1)} />
+              </div>
+              {p.radar?.length ? <Radar axes={p.radar} title="Player profile" /> : null}
             </div>
 
             <h3 className="section-title">Game log</h3>

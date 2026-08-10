@@ -179,6 +179,15 @@ export interface TeamGameLogRow {
   opponent_points: number | null;
 }
 
+export interface RadarAxis {
+  key: string;
+  label: string;
+  /** The real rate, shown as a direct label. */
+  value: number;
+  /** Rank against the league, 0-100 — the only thing the radius encodes. */
+  percentile: number;
+}
+
 export interface RosterRow {
   player_code: string;
   player_name: string | null;
@@ -199,6 +208,7 @@ export interface RosterRow {
 export interface TeamDetail extends Omit<TeamSeason, 'games'> {
   games: TeamGameLogRow[];
   roster: RosterRow[];
+  radar: RadarAxis[];
 }
 
 export interface PlayerSeason {
@@ -249,6 +259,8 @@ export interface PlayerDetail extends PlayerSeason {
   /** Null for players the registry has no photo for (~3%). */
   headshot_url: string | null;
   action_url: string | null;
+  /** Empty below the games threshold, where a per-36 rate would be noise. */
+  radar: RadarAxis[];
 }
 
 export interface RunRow {

@@ -283,3 +283,33 @@ def test_response_shape_version_changes_the_etag(client, monkeypatch):
     cache.clear()
     after = client.get("/api/teams/IST").headers["etag"]
     assert before != after
+
+
+# --- radar -------------------------------------------------------------------
+
+def test_percentile_uses_the_midpoint_rule_for_ties():
+    from app.queries import _percentile
+    assert _percentile([1, 2, 3, 4], 5) == 100.0
+    assert _percentile([1, 2, 3, 4], 0) == 0.0
+    # an all-level field lands mid-scale, not at an extreme
+    assert _percentile([7, 7, 7], 7) == 50.0
+    assert _percentile([], 3) == 0.0
+
+
+def test_team_radar_ranks_against_the_league(client):
+    won = client.get("/api/teams/IST").json()["radar"]
+    lost = client.get("/api/teams/TEL").json()["radar"]
+    assert [a["key"] for a in won]
+    assert all(0 <= a["percentile"] <= 100 for a in won)
+    # a club is ranked inside its own league, so the leader of a two-club field
+    # sits at 75 (midpoint rule), not 100 — what matters is the ordering
+    ist = next(a for a in won if a["key"] == "point_diff")
+    tel = next(a for a in lost if a["key"] == "point_diff")
+    assert ist["percentile"] > tel["percentile"]
+    assert ist["value"] > 0 > tel["value"]
+
+
+def test_player_radar_needs_a_real_sample(client, player_code):
+    # the fixture has a single game, well under the games threshold, so a
+    # per-36 rate would be noise and the radar is withheld rather than invented
+    assert client.get(f"/api/players/{player_code}").json()["radar"] == []

@@ -13,6 +13,7 @@ import {
   Stat,
   Th,
 } from './ui';
+import Radar from './Radar';
 import type { MetricKey } from '../lib/glossary';
 
 export default function Teams() {
@@ -117,13 +118,16 @@ function TeamDetail({ club }: { club: string }) {
             {/* No crest here — the page header already shows this club's, and a
                 second one collided with the back link above. */}
             <h2 className="section-title">{t.club_name ?? t.club_code}</h2>
-            <div className="stat-row">
-              <Stat k="Record" v={`${t.wins ?? '—'}-${t.losses ?? '—'}`} />
-              <Stat k="Point diff" v={signed(t.point_diff)} />
-              <Stat k="Poss / game" v={num(t.possessions_avg, 1)} />
-              <Stat k="Fouls drawn /100" v={num(t.fouls_drawn_per100, 1)} />
-              <Stat k="Biggest run" v={t.max_run ?? '—'} />
-              <Stat k="Biggest blown lead" v={t.max_blown_lead ?? '—'} />
+            <div className="detail-split">
+              <div className="stat-row">
+                <Stat k="Record" v={`${t.wins ?? '—'}-${t.losses ?? '—'}`} />
+                <Stat k="Point diff" v={signed(t.point_diff)} />
+                <Stat k="Poss / game" v={num(t.possessions_avg, 1)} />
+                <Stat k="Fouls drawn /100" v={num(t.fouls_drawn_per100, 1)} />
+                <Stat k="Biggest run" v={t.max_run ?? '—'} />
+                <Stat k="Biggest blown lead" v={t.max_blown_lead ?? '—'} />
+              </div>
+              {t.radar?.length ? <Radar axes={t.radar} title="Club profile" /> : null}
             </div>
 
             <h3 className="section-title">Roster</h3>

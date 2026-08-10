@@ -19,6 +19,12 @@
      palette validator, normal-vision ΔE 43 against the ink series). */
   --chart-home: #17150f;
   --chart-away: #d4441d;
+  /* Radar series. Validated with the palette checker against the raised
+     surface: inside the lightness band, over the chroma floor, past 3:1. */
+  --chart-radar: #d4441d;
+  /* The radar web. --ghost (0.08 alpha) is tuned for table row stripes and is
+     far too faint to read as a grid. */
+  --chart-grid: rgb(23 21 15 / 0.24);
 }
 
 [data-theme='dark'] {
@@ -36,6 +42,10 @@
   /* Dark mode is stepped separately, not flipped: both clear 3:1 on #211e16. */
   --chart-home: #e5e0d3;
   --chart-away: #ff5a2e;
+  /* Stepped for the dark surface, not flipped: the light-mode orange sits
+     above the lightness band on #211e16. */
+  --chart-radar: #ef5f36;
+  --chart-grid: rgb(229 224 211 / 0.22);
 }
 
 * {
@@ -504,6 +514,139 @@ td.neg {
 .roster tbody td {
   padding-top: 0.3rem;
   padding-bottom: 0.3rem;
+}
+
+/* --- radar ---------------------------------------------------------------- */
+
+.radar {
+  border: 2px solid var(--line);
+  box-shadow: 6px 6px 0 var(--line);
+  background: var(--bg-raised);
+  padding: 1rem 1.1rem 0.9rem;
+}
+
+/* No `overflow: visible` — the viewBox already reserves room for the labels,
+   and letting them spill put text outside the card. */
+.radar-plot {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* recessive but legible, solid — dashes would read as a threshold */
+.radar-grid polygon {
+  fill: none;
+  stroke: var(--chart-grid);
+  stroke-width: 1;
+}
+
+.radar-grid line {
+  stroke: var(--chart-grid);
+  stroke-width: 1;
+}
+
+/* the outer ring is the scale, not decoration — it needs to read */
+.radar-bound {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.25;
+}
+
+.radar-area {
+  fill: var(--chart-radar);
+  fill-opacity: 0.16;
+}
+
+.radar-line {
+  fill: none;
+  stroke: var(--chart-radar);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.radar-dot {
+  fill: var(--chart-radar);
+  /* the surface ring keeps a dot legible where it sits on a grid line */
+  stroke: var(--bg-raised);
+  stroke-width: 2;
+}
+
+/* labels wear text tokens, never the series colour */
+.radar-label text {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  fill: var(--text-muted);
+}
+
+.radar-label .radar-value {
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+  fill: var(--text);
+}
+
+.radar-label.is-active text {
+  fill: var(--text);
+}
+
+.radar-readout {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  margin-top: 0.6rem;
+  min-height: 1.2em; /* reserved, so hovering never nudges the layout */
+  font-variant-numeric: tabular-nums;
+}
+
+.radar-help {
+  font-size: 0.74rem;
+  line-height: 1.55;
+  margin-top: 0.4rem;
+}
+
+.radar-table {
+  margin-top: 0.6rem;
+  font-size: 0.78rem;
+}
+
+.radar-table summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.radar-table table {
+  margin-top: 0.5rem;
+}
+
+.radar-table thead th {
+  position: static;
+  font-size: 0.66rem;
+}
+
+/* The radar sits beside the headline figures on wide screens. The second
+   column is given a real share rather than `auto`, which sized it to the
+   card's own content and left the plot small next to the rest of the page. */
+.detail-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(21rem, 30rem);
+  gap: 1.5rem 2rem;
+  align-items: start;
+  margin-bottom: 1.6rem;
+}
+
+@media (max-width: 56rem) {
+  .detail-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .radar {
+    max-width: 100%;
+  }
 }
 
 /* --- cards / stats -------------------------------------------------------- */

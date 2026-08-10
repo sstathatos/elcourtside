@@ -45,6 +45,109 @@ def _rows(cur) -> list[dict]:
     return [dict(r) for r in cur.fetchall()]
 
 
+# --- radar profiles ----------------------------------------------------------
+# A radar only tells the truth when every spoke is on one scale, so each axis
+# carries a *percentile against the league*, not the raw figure. Raw counts on
+# shared spokes would make "20 points" and "20 assists" look identical, and the
+# shape would be an artefact of the units.
+#
+# Rate stats, not totals: a radar built on totals just draws minutes played.
+
+SECONDS_PER_36 = 2160.0
+# Below this, a per-36 rate is noise (one good quarter becomes a league-leading
+# rate), so short samples neither rank nor set the scale for everyone else.
+RADAR_MIN_GAMES = 5
+
+PLAYER_RADAR = [
+    ("scoring", "Scoring", "points"),
+    ("rebounding", "Rebounds", "reb_total"),
+    ("playmaking", "Assists", "assists"),
+    ("steals", "Steals", "steals"),
+    ("fouls_drawn", "Fouls drawn", "fouls_drawn"),
+]
+
+TEAM_RADAR = [
+    ("point_diff", "Point diff", "point_diff"),
+    ("pace", "Pace", "possessions_avg"),
+    # Short labels on purpose: a long one forces wide margins into the radar's
+    # viewBox, which shrinks the plot itself. The table view carries the full name.
+    ("fouls_drawn", "Fouls /100", "fouls_drawn_per100"),
+    ("max_run", "Best run", "max_run"),
+    ("clutch", "Clutch pts", "clutch_pts_for"),
+]
+
+
+def _percentile(values: list[float], target: float) -> float:
+    """Share of the field this value beats, 0-100.
+
+    Midpoint rule for ties, so a field where everyone is level lands at 50
+    rather than 0 or 100.
+    """
+    if not values:
+        return 0.0
+    below = sum(1 for v in values if v < target)
+    equal = sum(1 for v in values if v == target)
+    return round(100.0 * (below + 0.5 * equal) / len(values), 1)
+
+
+def _radar(field: list[dict], subject: dict, axes: list[tuple[str, str, str]]) -> list[dict]:
+    out = []
+    for key, label, column in axes:
+        value = subject.get(column)
+        if value is None:
+            continue
+        peers = [r[column] for r in field if r.get(column) is not None]
+        out.append({
+            "key": key,
+            "label": label,
+            "value": round(float(value), 2),
+            "percentile": _percentile(peers, float(value)),
+        })
+    return out
+
+
+def player_radar(conn, source: str, season_code: str, player: dict) -> list[dict]:
+    """Per-36 rates for the player, ranked against everyone who has played
+    enough for a rate to mean anything."""
+    seconds = player.get("seconds") or 0
+    if not seconds or (player.get("games_played") or 0) < RADAR_MIN_GAMES:
+        return []
+
+    rows = _rows(conn.execute(
+        """SELECT points, reb_total, assists, steals, fouls_drawn, seconds
+           FROM player_season_metrics
+           WHERE source=? AND season_code=? AND games_played >= ? AND seconds > 0""",
+        (source, season_code, RADAR_MIN_GAMES),
+    ))
+
+    def rate(row: dict, column: str) -> float | None:
+        secs = row.get("seconds") or 0
+        if not secs:
+            return None
+        return (row.get(column) or 0) * SECONDS_PER_36 / secs
+
+    field = [
+        {column: rate(r, column) for _, _, column in PLAYER_RADAR}
+        for r in rows
+    ]
+    subject = {column: rate(player, column) for _, _, column in PLAYER_RADAR}
+    return _radar(field, subject, PLAYER_RADAR)
+
+
+def team_radar(conn, source: str, season_code: str, team: dict) -> list[dict]:
+    """Season rates for the club, ranked against the rest of the league."""
+    field = _rows(conn.execute(
+        """SELECT t.possessions_avg, t.fouls_drawn_per100, t.max_run,
+                  t.clutch_pts_for, s.point_diff
+           FROM team_season_metrics t
+           LEFT JOIN standings s ON s.source=t.source AND s.season_code=t.season_code
+                                AND s.club_code=t.club_code
+           WHERE t.source=? AND t.season_code=?""",
+        (source, season_code),
+    ))
+    return _radar(field, team, TEAM_RADAR)
+
+
 # --- seasons -----------------------------------------------------------------
 
 def latest_season(conn, source: str) -> str | None:
@@ -253,6 +356,7 @@ def team(conn, source: str, season_code: str, club_code: str) -> dict | None:
     if row is None:
         return None
     detail = dict(row)
+    detail["radar"] = team_radar(conn, source, season_code, detail)
     # The squad as registered, from the people registry rather than from who
     # happened to appear in a boxscore — so a signing who has not played yet
     # still shows, with empty stat columns. LEFT JOIN for the same reason.
@@ -342,6 +446,7 @@ def player(conn, source: str, season_code: str, player_code: str) -> dict | None
     ).fetchone()
     detail["headshot_url"] = portrait["headshot_url"] if portrait else None
     detail["action_url"] = portrait["action_url"] if portrait else None
+    detail["radar"] = player_radar(conn, source, season_code, detail)
     detail["games"] = _rows(conn.execute(
         """SELECT m.game_code, m.club_code, m.is_home, m.pir, m.pm_computed,
                   m.seconds_computed, m.fouls_drawn, m.clutch_pm,

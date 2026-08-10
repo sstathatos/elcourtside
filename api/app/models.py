@@ -134,9 +134,17 @@ class TeamSeason(BaseModel):
     rank: int | None = None
 
 
+class RadarAxis(BaseModel):
+    key: str
+    label: str
+    value: float
+    percentile: float  # rank against the league, 0-100 — the radar's only scale
+
+
 class TeamDetail(TeamSeason):
     games: list[dict]  # game log; shadows the season count on purpose
     roster: list[dict] = []  # registered squad, including players yet to appear
+    radar: list[RadarAxis] = []
 
 
 class PlayerSeason(BaseModel):
@@ -172,6 +180,8 @@ class PlayerDetail(PlayerSeason):
     # everyone who is not a player (coaches and staff carry no images at all).
     headshot_url: str | None = None
     action_url: str | None = None
+    # Empty for players below the games threshold, where a per-36 rate is noise
+    radar: list[RadarAxis] = []
 
 
 class Club(BaseModel):
