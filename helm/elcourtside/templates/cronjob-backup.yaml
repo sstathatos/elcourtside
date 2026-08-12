@@ -1,0 +1,108 @@
+{{- if .Values.backup.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-backup
+  labels:
+    {{- include "elcourtside.labels" . | nindent 4 }}
+  annotations:
+    # The point of a backup is to outlive mistakes, including `helm uninstall`.
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: ["ReadWriteOnce"]
+  {{- with .Values.persistence.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.backupSize }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-backup
+  labels:
+    {{- include "elcourtside.componentLabels" (dict "Release" .Release "component" "backup") | nindent 4 }}
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            {{- include "elcourtside.componentLabels" (dict "Release" .Release "component" "backup") | nindent 12 }}
+        spec:
+          restartPolicy: OnFailure
+          # Pinned to a different node than the data volume on purpose. A pod
+          # cannot mount another node's local volume, so a copy that survives
+          # losing that node has to travel over the network — and it lands on
+          # a volume that is not on the node it is protecting against.
+          {{- with .Values.backup.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.backup.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+          containers:
+            - name: backup
+              image: "{{ .Values.backup.image.repository }}:{{ .Values.backup.image.tag }}"
+              # Pulls a *consistent* snapshot: the endpoint runs SQLite
+              # `VACUUM INTO` server-side and streams the result. Copying the
+              # live file instead could catch a half-written transaction.
+              #
+              # -S: fail the job on an HTTP error rather than writing an
+              # error page to disk and calling it a backup.
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+                  tmp="/backup/.partial-${stamp}.sqlite"
+                  out="/backup/elcourtside-${stamp}.sqlite"
+
+                  wget -q -O "$tmp" \
+                    "http://{{ .Release.Name }}-api:8000/internal/backup.sqlite"
+
+                  # Only becomes a real snapshot once it is complete, so an
+                  # interrupted run can never look like a good backup.
+                  mv "$tmp" "$out"
+                  echo "wrote $out ($(wc -c < "$out") bytes)"
+
+                  # Retention: keep the newest N, delete the rest.
+                  ls -1t /backup/elcourtside-*.sqlite \
+                    | tail -n +{{ add .Values.backup.retention 1 }} \
+                    | while read -r old; do echo "pruning $old"; rm -f "$old"; done
+
+                  # Clean up any partials left by an earlier failed run.
+                  rm -f /backup/.partial-* 2>/dev/null || true
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 25m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi
+          volumes:
+            - name: backup
+              persistentVolumeClaim:
+                claimName: {{ .Release.Name }}-backup
+{{- end }}

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: elcourtside
+description: Euroleague stats — FastAPI + SQLite behind an Astro/nginx frontend
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

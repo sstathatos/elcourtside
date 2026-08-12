@@ -69,8 +69,12 @@ def create_app() -> FastAPI:
         title="elcourtside API",
         description=DESCRIPTION,
         version="0.1.0",
-        docs_url="/docs",
-        openapi_url="/openapi.json",
+        # Under /api like every route, so the Ingress needs one path rule and
+        # the footer's "API docs" link resolves the same locally and in the
+        # cluster. /health and /metrics stay at the root: probes and the
+        # ServiceMonitor address the pod directly, never through the Ingress.
+        docs_url="/api/docs",
+        openapi_url="/api/openapi.json",
     )
 
     origins = os.environ.get("ELCOURTSIDE_CORS_ORIGINS", "http://localhost:4321")

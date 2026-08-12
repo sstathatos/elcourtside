@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-web
+  labels:
+    {{- include "elcourtside.componentLabels" (dict "Release" .Release "component" "web") | nindent 4 }}
+spec:
+  replicas: {{ .Values.web.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "elcourtside.componentLabels" (dict "Release" .Release "component" "web") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "elcourtside.componentLabels" (dict "Release" .Release "component" "web") | nindent 8 }}
+    spec:
+      # Static files with no state, so unlike the API this one spreads across
+      # nodes and rolls normally.
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    {{- include "elcourtside.componentLabels" (dict "Release" .Release "component" "web") | nindent 20 }}
+                topologyKey: kubernetes.io/hostname
+      securityContext:
+        runAsNonRoot: true
+        # The nginx-unprivileged image's own UID; it listens on 8080 rather
+        # than a privileged port precisely so it can run as this user.
+        runAsUser: 101
+        runAsGroup: 101
+      containers:
+        - name: web
+          image: "{{ .Values.web.image.repository }}:{{ .Values.web.image.tag }}"
+          imagePullPolicy: {{ .Values.web.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.web.containerPort }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            # nginx writes its pid and caches under /tmp in this image, so the
+            # root filesystem can stay read-only.
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            {{- toYaml .Values.web.resources | nindent 12 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}

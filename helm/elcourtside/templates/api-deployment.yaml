@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-api
+  labels:
+    {{- include "elcourtside.componentLabels" (dict "Release" .Release "component" "api") | nindent 4 }}
+spec:
+  # Exactly one. SQLite is single-writer, and the volume is node-local
+  # ReadWriteOnce — a second replica could neither mount it elsewhere nor
+  # write safely alongside the first.
+  replicas: 1
+  strategy:
+    # Recreate, not RollingUpdate: the new pod cannot attach the volume until
+    # the old one lets go, so a rolling update would deadlock on itself.
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "elcourtside.componentLabels" (dict "Release" .Release "component" "api") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "elcourtside.componentLabels" (dict "Release" .Release "component" "api") | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        # fsGroup is what makes the shared volume actually workable: it
+        # group-owns the mount, so the API and the CronJobs (same GID) can all
+        # write. Without it a read-only SQLite connection still fails, because
+        # opening a WAL database has to create the -shm file.
+        fsGroup: 1000
+      containers:
+        - name: api
+          image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.api.containerPort }}
+          env:
+            - name: ELCOURTSIDE_DB
+              value: /data/elcourtside.db
+            - name: ELCOURTSIDE_CORS_ORIGINS
+              value: "https://{{ .Values.ingress.host }}"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            # /internal/backup.sqlite runs SQLite `VACUUM INTO` a temp file
+            # before streaming it, so the pod needs somewhere writable even
+            # though its root filesystem is not. Sized for a full-history
+            # database (~1 GB) with headroom.
+            - name: tmp
+              mountPath: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            # /health stays 200 with status "degraded" when the database is
+            # unreadable, so this restarts only a genuinely wedged process —
+            # a missing database is not fixed by restarting.
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-data
+        - name: tmp
+          emptyDir:
+            sizeLimit: {{ .Values.api.tmpSize }}

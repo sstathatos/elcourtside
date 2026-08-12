@@ -1,0 +1,118 @@
+{{- if .Values.dashboard.enabled }}
+# The cluster's Grafana runs a sidecar watching every namespace for this
+# label, so shipping the dashboard with the app means it arrives and leaves
+# with the release rather than being clicked into Grafana by hand.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-dashboard
+  labels:
+    grafana_dashboard: "1"
+    {{- include "elcourtside.labels" . | nindent 4 }}
+data:
+  elcourtside.json: |
+    {
+      "title": "elcourtside",
+      "uid": "elcourtside",
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "refresh": "1m",
+      "time": { "from": "now-24h", "to": "now" },
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Hours since last successful ingest",
+          "description": "Rises steadily if the nightly CronJob stops working. Read from the database by the API, because CronJob pods are too short-lived to scrape.",
+          "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "h",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "orange", "value": 26 },
+                  { "color": "red", "value": 50 }
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "(time() - elcourtside_last_successful_ingest_timestamp) / 3600",
+              "legendFormat": "since ingest"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Games ingested",
+          "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 },
+          "targets": [
+            { "expr": "elcourtside_games_ingested", "legendFormat": "games" }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Games missing play-by-play",
+          "description": "Expected to be non-zero only for the pre-2007 era, which has no play-by-play at all.",
+          "gridPos": { "h": 5, "w": 6, "x": 12, "y": 0 },
+          "targets": [
+            { "expr": "elcourtside_games_missing_pbp", "legendFormat": "no pbp" }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Hours since metrics recompute",
+          "gridPos": { "h": 5, "w": 6, "x": 18, "y": 0 },
+          "fieldConfig": { "defaults": { "unit": "h" } },
+          "targets": [
+            {
+              "expr": "(time() - elcourtside_metrics_computed_at_timestamp) / 3600",
+              "legendFormat": "since recompute"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "API request rate by handler",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+          "fieldConfig": { "defaults": { "unit": "reqps" } },
+          "targets": [
+            {
+              "expr": "sum by (handler) (rate(http_requests_total{job=~\".*elcourtside.*\"}[5m]))",
+              "legendFormat": "{{`{{handler}}`}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "API latency (p50 / p95)",
+          "description": "Most reads are served from the in-process cache, so a rising p95 usually means cache misses, not slow SQL.",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
+          "fieldConfig": { "defaults": { "unit": "s" } },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, sum by (le) (rate(http_request_duration_seconds_bucket{job=~\".*elcourtside.*\"}[5m])))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job=~\".*elcourtside.*\"}[5m])))",
+              "legendFormat": "p95"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Non-2xx responses",
+          "gridPos": { "h": 7, "w": 24, "x": 0, "y": 13 },
+          "targets": [
+            {
+              "expr": "sum by (status) (rate(http_requests_total{job=~\".*elcourtside.*\", status!~\"2..\"}[5m]))",
+              "legendFormat": "{{`{{status}}`}}"
+            }
+          ]
+        }
+      ]
+    }
+{{- end }}

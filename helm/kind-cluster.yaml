@@ -1,0 +1,23 @@
+# Local cluster for validating the chart before it goes near production.
+#
+# Two nodes on purpose: the backup CronJob is pinned away from the data
+# volume's node, and that arrangement cannot be tested on a single node —
+# which is exactly the part most likely to be wrong.
+#
+#   kind create cluster --name elcourtside --config helm/kind-cluster.yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      # Lets the ingress controller run here and bind the host ports below.
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 8081
+        protocol: TCP
+  - role: worker

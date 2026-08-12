@@ -1,0 +1,48 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    {{- include "elcourtside.labels" . | nindent 4 }}
+  {{- if and .Values.ingress.tls .Values.ingress.clusterIssuer }}
+  annotations:
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.clusterIssuer }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host }}
+      secretName: {{ .Values.ingress.tlsSecretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          # /api first: with Prefix matching, nginx-ingress takes the longest
+          # match, but the ordering is kept explicit so the intent survives an
+          # edit. Every API route — including /api/docs — is under this
+          # prefix, so no rewrite is needed and no second rule is required.
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-api
+                port:
+                  number: 8000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-web
+                port:
+                  number: 80
+{{- end }}
+{{/*
+  Deliberately NOT routed: /health, /metrics and /internal/backup.sqlite.
+  Probes and the ServiceMonitor address the pod directly, and the backup
+  endpoint is cluster-internal only — the API also refuses non-private
+  callers, but not publishing it is the first line of defence.
+*/}}

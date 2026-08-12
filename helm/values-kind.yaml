@@ -1,0 +1,51 @@
+# Overrides for the local kind cluster. Everything here is a difference
+# between a laptop and the real cluster — the chart's defaults describe
+# production, and this file is the diff.
+#
+#   helm install elcourtside helm/elcourtside -f helm/values-kind.yaml
+
+api:
+  image:
+    # Loaded straight into the nodes with `kind load docker-image`, so there
+    # is no registry to pull from and pulling must not be attempted.
+    repository: elcourtside-api
+    tag: dev
+    pullPolicy: Never
+
+web:
+  image:
+    repository: elcourtside-web
+    tag: dev
+    pullPolicy: Never
+  # One node is running the ingress controller and the API; two web replicas
+  # with anti-affinity still fit, but one keeps the local cluster quiet.
+  replicaCount: 1
+
+persistence:
+  # kind ships the same rancher local-path provisioner as k3s, under the
+  # name "standard" rather than "local-path".
+  storageClass: standard
+  size: 1Gi
+  backupSize: 1Gi
+
+backup:
+  # The whole point of a two-node kind cluster: prove the backup lands on a
+  # different node than the volume it is protecting. The data volume binds
+  # wherever the API pod runs (the worker), so the backup is pinned to the
+  # control-plane — which needs the toleration below to be schedulable at all.
+  nodeSelector:
+    kubernetes.io/hostname: elcourtside-control-plane
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+
+ingress:
+  host: localhost
+  # No cert-manager locally, so no TLS and no issuer annotation.
+  tls: false
+  clusterIssuer: ""
+
+serviceMonitor:
+  # kube-prometheus-stack is not installed here, so the CRD does not exist.
+  enabled: false

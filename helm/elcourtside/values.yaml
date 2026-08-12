@@ -1,0 +1,84 @@
+api:
+  image:
+    repository: ghcr.io/sstathatos/elcourtside-api
+    # pinned by CI on every build — do not edit by hand; the git history of
+    # this line is the deploy history
+    tag: "dev"
+    pullPolicy: IfNotPresent
+  # Always 1. SQLite is single-writer and the PVC is a node-local volume, so a
+  # second replica could neither mount it elsewhere nor write safely.
+  containerPort: 8000
+  # Scratch space for the backup endpoint's `VACUUM INTO` snapshot, which is
+  # written whole before it is streamed — so this must exceed the database
+  # size (~1 GB at full history).
+  tmpSize: 2Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+
+web:
+  image:
+    repository: ghcr.io/sstathatos/elcourtside-web
+    tag: "dev"
+    pullPolicy: IfNotPresent
+  replicaCount: 2
+  containerPort: 8080
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      memory: 64Mi
+
+persistence:
+  # k3s ships local-path; kind's default class is also local-path under the
+  # name "standard". Empty means "cluster default".
+  storageClass: "local-path"
+  # local-path does not enforce quota — this number is documentation of the
+  # expected full-history size (~1 GB) with headroom.
+  size: 5Gi
+  backupSize: 5Gi
+
+ingest:
+  # Nightly, after the last European tip-off has finished.
+  schedule: "0 3 * * *"
+  # `latest` in the cluster too: the one-time full backfill is run by hand as
+  # a Job, not on a schedule.
+  seasons: latest
+  # A backfill can run for hours; a nightly incremental is minutes.
+  activeDeadlineSeconds: 43200
+
+backup:
+  enabled: true
+  schedule: "30 4 * * *"
+  # Pinned to a *different* node than the data PVC: a pod cannot mount another
+  # node's local volume, so the snapshot has to travel over HTTP rather than
+  # by copying the file.
+  nodeSelector:
+    kubernetes.io/hostname: comrade2
+  # A nodeSelector alone cannot reach a tainted node, so pinning the backup at
+  # a control-plane node (as the local kind cluster does) also needs this.
+  tolerations: []
+  retention: 7
+  image:
+    repository: alpine
+    tag: "3.22"
+
+ingress:
+  enabled: true
+  className: nginx
+  host: elcourtside.sstathatos.dev
+  clusterIssuer: letsencrypt-prod
+  tlsSecretName: elcourtside-tls
+  tls: true
+
+serviceMonitor:
+  enabled: true
+  interval: 30s
+
+dashboard:
+  # Picked up by the cluster's Grafana sidecar, which watches all namespaces.
+  enabled: true

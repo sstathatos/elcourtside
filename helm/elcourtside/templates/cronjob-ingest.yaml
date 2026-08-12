@@ -1,0 +1,59 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-ingest
+  labels:
+    {{- include "elcourtside.componentLabels" (dict "Release" .Release "component" "ingest") | nindent 4 }}
+spec:
+  schedule: {{ .Values.ingest.schedule | quote }}
+  # A second ingest while one is running would fight the first for the SQLite
+  # write lock, and the run is idempotent anyway — skipping is correct.
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  # Missing a night is harmless: the next run picks up every game that is
+  # still not final, because the work is defined by DB state, not by a clock.
+  startingDeadlineSeconds: 3600
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: {{ .Values.ingest.activeDeadlineSeconds }}
+      template:
+        metadata:
+          labels:
+            {{- include "elcourtside.componentLabels" (dict "Release" .Release "component" "ingest") | nindent 12 }}
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            # Same GID as the API, which is what lets both write the volume.
+            fsGroup: 1000
+          containers:
+            - name: ingest
+              image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
+              imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+              # The same image the API runs; only the command differs, so the
+              # parser and the reader of its output can never drift apart.
+              command: ["python", "-m", "ingest", "--seasons", {{ .Values.ingest.seasons | quote }}]
+              env:
+                - name: ELCOURTSIDE_DB
+                  value: /data/elcourtside.db
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                {{- toYaml .Values.api.resources | nindent 16 }}
+          volumes:
+            # Mounting the same claim is also what co-schedules this pod onto
+            # the API's node: the local volume carries node affinity, so the
+            # scheduler has nowhere else to put it.
+            - name: data
+              persistentVolumeClaim:
+                claimName: {{ .Release.Name }}-data
