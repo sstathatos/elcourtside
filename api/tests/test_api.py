@@ -375,3 +375,17 @@ def test_player_radar_has_twelve_axes_with_real_data(client, api_conn, player_co
     assert all(0 <= a["percentile"] <= 100 for a in radar)
     inverted = {a["key"] for a in radar if a.get("lower_is_better")}
     assert inverted <= {"ball_security", "opp_fg_pct", "drtg"}
+
+
+def test_player_page_survives_a_database_without_radar_columns(client, api_conn, player_code):
+    """A deploy ships the image before the metrics job adds new columns, so the
+    API must serve an older database — losing the chart, not the page."""
+    api_conn.executescript(
+        "ALTER TABLE player_season_metrics DROP COLUMN reb_off;"
+        "ALTER TABLE team_season_metrics ADD COLUMN _unused INTEGER;"
+    )
+    api_conn.commit()
+    cache.clear()
+    r = client.get(f"/api/players/{player_code}")
+    assert r.status_code == 200, r.text
+    assert r.json()["radar"] == []

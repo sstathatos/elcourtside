@@ -12,9 +12,12 @@ score curve from pbp_events through metrics.timeline — see its docstring.
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 
 from metrics.timeline import build_timeline
+
+log = logging.getLogger("api")
 
 # --- sort whitelists ---------------------------------------------------------
 # A column name cannot be a bound parameter, so anything that reaches ORDER BY
@@ -184,36 +187,64 @@ def _derived(row: dict) -> dict:
     }
 
 
+def _radar_columns_missing(exc: sqlite3.OperationalError) -> bool:
+    return "no such column" in str(exc)
+
+
 def player_radar(conn, source: str, season_code: str, player: dict) -> list[dict]:
     """Twelve rate metrics, ranked against everyone who has played enough for
-    a rate to mean anything."""
+    a rate to mean anything.
+
+    Returns nothing rather than raising when the database predates a metric.
+    A deploy is not atomic across code and data: the image ships the moment CI
+    finishes, while the columns only appear when the metrics job next runs. A
+    player page must not 500 over a chart that is not there yet — this exact
+    gap took production down for every player.
+    """
     if not (player.get("seconds") or 0) or (player.get("games_played") or 0) < RADAR_MIN_GAMES:
         return []
 
-    rows = _rows(conn.execute(
-        """SELECT points, reb_off, reb_def, assists, steals, blocks_favour,
-                  turnovers, fouls_drawn, fg2a, fg3m, fg3a, fta, seconds,
-                  poss_share, opp_fgm, opp_fga, opp_points
-           FROM player_season_metrics
-           WHERE source=? AND season_code=? AND games_played >= ? AND seconds > 0""",
-        (source, season_code, RADAR_MIN_GAMES),
-    ))
+    try:
+        rows = _rows(conn.execute(
+            """SELECT points, reb_off, reb_def, assists, steals, blocks_favour,
+                      turnovers, fouls_drawn, fg2a, fg3m, fg3a, fta, seconds,
+                      poss_share, opp_fgm, opp_fga, opp_points
+               FROM player_season_metrics
+               WHERE source=? AND season_code=? AND games_played >= ? AND seconds > 0""",
+            (source, season_code, RADAR_MIN_GAMES),
+        ))
+    except sqlite3.OperationalError as exc:
+        if _radar_columns_missing(exc):
+            log.warning("radar unavailable for %s: %s — run `python -m metrics`",
+                        season_code, exc)
+            return []
+        raise
 
     field = [_derived(r) for r in rows]
     return _radar(field, _derived(player), PLAYER_RADAR)
 
 
 def team_radar(conn, source: str, season_code: str, team: dict) -> list[dict]:
-    """Season rates for the club, ranked against the rest of the league."""
-    field = _rows(conn.execute(
-        """SELECT t.possessions_avg, t.fouls_drawn_per100, t.max_run,
-                  t.clutch_pts_for, s.point_diff
-           FROM team_season_metrics t
-           LEFT JOIN standings s ON s.source=t.source AND s.season_code=t.season_code
-                                AND s.club_code=t.club_code
-           WHERE t.source=? AND t.season_code=?""",
-        (source, season_code),
-    ))
+    """Season rates for the club, ranked against the rest of the league.
+
+    Same tolerance as the player radar: an older database loses the chart, not
+    the page.
+    """
+    try:
+        field = _rows(conn.execute(
+            """SELECT t.possessions_avg, t.fouls_drawn_per100, t.max_run,
+                      t.clutch_pts_for, s.point_diff
+               FROM team_season_metrics t
+               LEFT JOIN standings s ON s.source=t.source AND s.season_code=t.season_code
+                                    AND s.club_code=t.club_code
+               WHERE t.source=? AND t.season_code=?""",
+            (source, season_code),
+        ))
+    except sqlite3.OperationalError as exc:
+        if _radar_columns_missing(exc):
+            log.warning("team radar unavailable for %s: %s", season_code, exc)
+            return []
+        raise
     return _radar(field, team, TEAM_RADAR)
 
 
