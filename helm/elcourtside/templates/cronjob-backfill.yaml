@@ -1,0 +1,76 @@
+{{- if .Values.backfill.enabled }}
+# The manual "run it now" button.
+#
+# Permanently suspended: it has a schedule only because a CronJob must, and it
+# never fires on its own. It exists so an on-demand run is one command that
+# inherits the real pod spec — image, volume, security context, the lot —
+# instead of a hand-written Job that drifts from the chart:
+#
+#   kubectl -n elcourtside create job --from=cronjob/{{ .Release.Name }}-backfill now-$(date +%s)
+#
+# Where the nightly job fetches `latest`, this one fetches every season the
+# source has (~8 h, paced at roughly one request every two seconds). It is
+# safe to run at any time and safe to interrupt: every write is an idempotent
+# upsert and progress is recorded per game, so a rerun resumes.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-backfill
+  labels:
+    {{- include "elcourtside.componentLabels" (dict "Release" .Release "component" "backfill") | nindent 4 }}
+spec:
+  # Never runs on its own. 29 February at 03:00 would still fire on leap
+  # years, so suspend is what actually guarantees it — the schedule is only
+  # here to satisfy the API.
+  schedule: "0 3 1 1 *"
+  suspend: true
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: {{ .Values.backfill.activeDeadlineSeconds }}
+      template:
+        metadata:
+          labels:
+            {{- include "elcourtside.componentLabels" (dict "Release" .Release "component" "backfill") | nindent 12 }}
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+          containers:
+            - name: backfill
+              image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
+              imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  python -m ingest --seasons {{ .Values.backfill.seasons | quote }}
+                  # Same selector for both: `python -m metrics` also defaults
+                  # to `latest`, so a backfill of every season would otherwise
+                  # fetch the lot and compute the newest one only.
+                  python -m metrics --seasons {{ .Values.backfill.seasons | quote }}
+              env:
+                - name: ELCOURTSIDE_DB
+                  value: /data/elcourtside.db
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                {{- toYaml .Values.api.resources | nindent 16 }}
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: {{ .Release.Name }}-data
+{{- end }}

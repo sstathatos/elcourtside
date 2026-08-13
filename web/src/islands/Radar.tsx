@@ -23,7 +23,12 @@ const RINGS = [25, 50, 75];
 // The viewBox reserves room for the spoke labels, which sit outside the outer
 // ring. Kept as tight as the longest label allows: every extra unit of margin
 // is width the plot itself does not get.
-const VIEW_BOX = '-104 -40 460 362';
+const VIEW_BOX = '-124 -46 512 380';
+// Past this many spokes the labels stop fitting two lines each, so the raw
+// figure moves to the hover readout and the table below. At twelve axes the
+// wedges are 30° apart and a value under every label collides with its
+// neighbours — verified by rendering it.
+const DENSE_AXES = 7;
 
 /** Spoke `i` of `total`, at `pct` of full radius. First spoke points up. */
 export function spokePoint(pct: number, index: number, total: number, radius = R) {
@@ -45,6 +50,8 @@ export default function Radar({ axes, title }: { axes: RadarAxis[]; title: strin
   const n = axes.length;
   const shape = polygon((i) => axes[i]!.percentile, n);
   const subject = title.toLowerCase().includes('club') ? 'club' : 'player';
+  const dense = n >= DENSE_AXES;
+  const hasInverted = axes.some((a) => a.lower_is_better);
 
   return (
     <div className="radar">
@@ -94,19 +101,28 @@ export default function Radar({ axes, title }: { axes: RadarAxis[]; title: strin
         {/* direct labels: metric and its real figure, so the shape is readable
             without hovering anything */}
         {axes.map((a, i) => {
-          const p = spokePoint(128, i, n);
+          const p = spokePoint(dense ? 122 : 128, i, n);
           const anchor = p.x > CX + 6 ? 'start' : p.x < CX - 6 ? 'end' : 'middle';
           // Both lines hang below their anchor, so on the upper half they would
           // grow back toward the plot and collide with the spoke's own dot.
-          const y = p.y < CY - 10 ? p.y - 15 : p.y;
+          const y = dense || p.y >= CY - 10 ? p.y : p.y - 15;
           return (
-            <g key={a.key} className={active === i ? 'radar-label is-active' : 'radar-label'}>
+            <g
+              key={a.key}
+              className={[
+                'radar-label',
+                dense ? 'is-dense' : '',
+                active === i ? 'is-active' : '',
+              ].join(' ')}
+            >
               <text x={p.x} y={y} textAnchor={anchor}>
                 {a.label}
               </text>
-              <text x={p.x} y={y + 15} textAnchor={anchor} className="radar-value">
-                {a.value}
-              </text>
+              {!dense && (
+                <text x={p.x} y={y + 15} textAnchor={anchor} className="radar-value">
+                  {a.value}
+                </text>
+              )}
             </g>
           );
         })}
@@ -128,9 +144,14 @@ export default function Radar({ axes, title }: { axes: RadarAxis[]; title: strin
       <details className="radar-table">
         <summary>How to read this</summary>
         <p className="muted radar-help">
-          Each spoke is this {subject}'s percentile against the league — the outer edge is
-          the league best. Figures beside each spoke are the actual rates, not the
-          percentile, so the shape and the numbers answer different questions.
+          Each spoke is this {subject}'s percentile against the league — the outer edge
+          is the league best.{' '}
+          {dense
+            ? 'Hover a point, or open the table, for the underlying rate.'
+            : 'Figures beside each spoke are the actual rates, not the percentile.'}
+          {hasInverted
+            ? ' Where a smaller number is better — turnovers, opponent shooting — the ranking is flipped, so further out always means better.'
+            : ''}
         </p>
       </details>
 
@@ -147,7 +168,12 @@ export default function Radar({ axes, title }: { axes: RadarAxis[]; title: strin
           <tbody>
             {axes.map((a) => (
               <tr key={a.key}>
-                <td style={{ textAlign: 'left' }}>{a.label}</td>
+                <td style={{ textAlign: 'left' }}>
+                  {a.label}
+                  {/* without this, "Ball Security 2.21" next to a high
+                      percentile looks like a contradiction */}
+                  {a.lower_is_better && <span className="muted"> (lower is better)</span>}
+                </td>
                 <td className="num">{a.value}</td>
                 <td className="num">{a.percentile}</td>
               </tr>

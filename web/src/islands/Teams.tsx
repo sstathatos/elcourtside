@@ -104,10 +104,10 @@ function TeamTable() {
 }
 
 function TeamDetail({ club }: { club: string }) {
-  const state = useApi(() => api.team(club), [club]);
-  // Same default the API applies when `season` is omitted, so the crests match
-  // the season the figures come from.
+  // The season comes from the URL, so opening a club from the 2023-24 table
+  // shows 2023-24 rather than falling back to the newest season.
   const { season } = useSeasons();
+  const state = useApi(() => api.team(club, season), [club, season]);
 
   return (
     <ClubsProvider season={season}>

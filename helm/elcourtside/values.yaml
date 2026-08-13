@@ -51,6 +51,16 @@ ingest:
   # A backfill can run for hours; a nightly incremental is minutes.
   activeDeadlineSeconds: 43200
 
+# The manual "run it now" job: a suspended CronJob used as a template, so an
+# on-demand run inherits the real pod spec rather than being hand-written.
+#   kubectl -n elcourtside create job --from=cronjob/elcourtside-backfill now
+backfill:
+  enabled: true
+  # Every season the source has, unlike the nightly job's `latest`.
+  seasons: all
+  # ~8 h at the polite request rate; the ceiling is generous on purpose.
+  activeDeadlineSeconds: 43200
+
 backup:
   enabled: true
   schedule: "30 4 * * *"

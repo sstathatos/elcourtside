@@ -8,7 +8,7 @@ ENGINE_VERSION is stored in metrics_meta at compute time; bump it when a
 formula changes so stale seasons can be detected and recomputed.
 """
 
-ENGINE_VERSION = 1
+ENGINE_VERSION = 2  # added shooting/rebound splits and on-court defence
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS player_game_metrics (
@@ -26,6 +26,10 @@ CREATE TABLE IF NOT EXISTS player_game_metrics (
   clutch_seconds  REAL,
   clutch_points   INTEGER,
   clutch_pm       INTEGER,
+  -- opponent totals while this player was on court; NULL without play-by-play
+  opp_fgm         INTEGER,
+  opp_fga         INTEGER,
+  opp_points      INTEGER,
   PRIMARY KEY (source, season_code, game_code, player_code)
 );
 
@@ -74,6 +78,23 @@ CREATE TABLE IF NOT EXISTS player_season_metrics (
   clutch_points     INTEGER,
   clutch_pm         INTEGER,
   fouls_drawn_per100 REAL,   -- per 100 possessions available while on court
+  -- Shooting and rebound splits, summed from the boxscore. Stored raw rather
+  -- than as percentages so rates can be derived without losing the
+  -- denominators — a 1-for-2 night and a 50-for-100 season are both "50%".
+  reb_off           INTEGER,
+  reb_def           INTEGER,
+  fg2m              INTEGER,
+  fg2a              INTEGER,
+  fg3m              INTEGER,
+  fg3a              INTEGER,
+  ftm               INTEGER,
+  fta               INTEGER,
+  -- On-court opponent totals (see metrics/defense.py). NULL for seasons with
+  -- no play-by-play.
+  opp_fgm           INTEGER,
+  opp_fga           INTEGER,
+  opp_points        INTEGER,
+  poss_share        REAL,     -- minutes-weighted possessions; denominator for TOV/100 and DRTG
   PRIMARY KEY (source, season_code, player_code)
 );
 
@@ -116,5 +137,32 @@ CREATE TABLE IF NOT EXISTS metrics_meta (
 """
 
 
+# Columns added after a table first shipped. `CREATE TABLE IF NOT EXISTS` does
+# nothing to an existing table, so new columns have to be ALTERed in — and
+# SQLite has no `ADD COLUMN IF NOT EXISTS`, hence the pragma check.
+_ADDED_COLUMNS = {
+    "player_game_metrics": [
+        ("opp_fgm", "INTEGER"), ("opp_fga", "INTEGER"), ("opp_points", "INTEGER"),
+    ],
+    "player_season_metrics": [
+        ("reb_off", "INTEGER"), ("reb_def", "INTEGER"),
+        ("fg2m", "INTEGER"), ("fg2a", "INTEGER"),
+        ("fg3m", "INTEGER"), ("fg3a", "INTEGER"),
+        ("ftm", "INTEGER"), ("fta", "INTEGER"),
+        ("opp_fgm", "INTEGER"), ("opp_fga", "INTEGER"), ("opp_points", "INTEGER"),
+        ("poss_share", "REAL"),
+    ],
+}
+
+
+def migrate(conn) -> None:
+    for table, columns in _ADDED_COLUMNS.items():
+        have = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+        for name, decl in columns:
+            if name not in have:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+
+
 def ensure_schema(conn) -> None:
     conn.executescript(SCHEMA)
+    migrate(conn)

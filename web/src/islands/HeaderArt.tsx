@@ -51,8 +51,8 @@ export function GameTeams() {
   const { season } = useSeasons();
   const clubs = useClubs(season);
   const state = useApi(
-    () => (code ? api.game(Number(code)) : Promise.resolve(null)),
-    [code],
+    () => (code ? api.game(Number(code), season) : Promise.resolve(null)),
+    [code, season],
   );
 
   // Hides the basketball while a game is open. The inline script in

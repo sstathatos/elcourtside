@@ -52,13 +52,25 @@ export function useClubs(season: string | undefined) {
   return useMemo(() => new Map((data ?? []).map((c) => [c.club_code, c])), [data]);
 }
 
-/** The season list plus the currently selected code (defaults to newest). */
+/**
+ * The season list plus the selected code, which lives in the URL rather than
+ * in component state.
+ *
+ * It has to: opening a team or a player swaps which component is mounted, so
+ * local state was lost on the way and the detail view silently fell back to
+ * the newest season — you could pick 2023-24, click a club, and read last
+ * season's numbers. Keeping it in the query string also makes a season's view
+ * a link someone can send.
+ */
 export function useSeasons() {
   const { data: seasons, error } = useApi(() => api.seasons(), []);
-  const [selected, setSelected] = useState<string | undefined>(undefined);
-  const season = selected ?? seasons?.[0]?.season_code;
+  // Read synchronously from the URL, so the first render already knows the
+  // season and no request goes out for the wrong one.
+  const fromUrl = useParam('season');
+  const season = fromUrl ?? seasons?.[0]?.season_code;
   const current: Season | undefined = seasons?.find((s) => s.season_code === season);
-  return { seasons: seasons ?? [], season, current, setSeason: setSelected, error };
+  const setSeason = useCallback((code: string) => setParam('season', code), []);
+  return { seasons: seasons ?? [], season, current, setSeason, error };
 }
 
 /** Client-side sort state for tables whose rows are already in memory. */

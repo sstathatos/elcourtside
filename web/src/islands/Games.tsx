@@ -94,9 +94,9 @@ function GameList() {
 }
 
 function GameDetail({ code }: { code: number }) {
-  const game = useApi(() => api.game(code), [code]);
-  const timeline = useApi(() => api.timeline(code), [code]);
   const { season } = useSeasons();
+  const game = useApi(() => api.game(code, season), [code, season]);
+  const timeline = useApi(() => api.timeline(code, season), [code, season]);
 
   return (
     <ClubsProvider season={season}>

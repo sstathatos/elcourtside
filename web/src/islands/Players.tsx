@@ -143,8 +143,8 @@ function PlayerTable() {
 }
 
 function PlayerDetail({ code }: { code: string }) {
-  const state = useApi(() => api.player(code), [code]);
   const { season } = useSeasons();
+  const state = useApi(() => api.player(code, season), [code, season]);
 
   return (
     <ClubsProvider season={season}>

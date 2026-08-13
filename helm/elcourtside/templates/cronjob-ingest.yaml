@@ -36,7 +36,25 @@ spec:
               imagePullPolicy: {{ .Values.api.image.pullPolicy }}
               # The same image the API runs; only the command differs, so the
               # parser and the reader of its output can never drift apart.
-              command: ["python", "-m", "ingest", "--seasons", {{ .Values.ingest.seasons | quote }}]
+              #
+              # Both steps in one pod, chained with &&, because ingest writes
+              # raw payloads and parsed rows while `metrics` derives the tables
+              # the site actually reads — fetching without recomputing leaves
+              # the site showing yesterday's numbers over today's games. Two
+              # CronJobs on separate schedules would be worse: SQLite takes one
+              # writer, so an overrunning ingest and a clock-triggered metrics
+              # run would collide. Sequencing them here makes the order a
+              # property of the job rather than of the schedule.
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  python -m ingest --seasons {{ .Values.ingest.seasons | quote }}
+                  # Same selector for both: `python -m metrics` also defaults
+                  # to `latest`, so a backfill of every season would otherwise
+                  # fetch the lot and compute the newest one only.
+                  python -m metrics --seasons {{ .Values.ingest.seasons | quote }}
               env:
                 - name: ELCOURTSIDE_DB
                   value: /data/elcourtside.db

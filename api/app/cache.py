@@ -34,7 +34,7 @@ _STAMP_TTL = 5.0  # seconds to reuse a computed_at lookup across a burst
 # team detail left computed_at untouched, so the ETag was unchanged, and every
 # browser holding a pre-roster copy revalidated into a 304 and kept serving it
 # indefinitely. Folding this into the key and the ETag retires those copies.
-SCHEMA_VERSION = "3"
+SCHEMA_VERSION = "4"
 
 _entries: OrderedDict[tuple, Any] = OrderedDict()
 _stamps: dict[tuple[str, str], tuple[float, str]] = {}

@@ -58,22 +58,40 @@ SECONDS_PER_36 = 2160.0
 # rate), so short samples neither rank nor set the scale for everyone else.
 RADAR_MIN_GAMES = 5
 
+# (key, label, derived-metric name, lower_is_better)
+#
+# Twelve axes, not the twenty a tracking provider can offer: the eight play
+# types a skill radar usually carries — pick-and-roll, isolation, post-up,
+# cuts, catch-and-shoot, drives, transition — are Synergy-style
+# classifications. This feed records *events* (2FGM, AS, D, ST), never the
+# action that produced them, and carries no shot coordinates, so those axes
+# would have to be invented rather than measured.
 PLAYER_RADAR = [
-    ("scoring", "Scoring", "points"),
-    ("rebounding", "Rebounds", "reb_total"),
-    ("playmaking", "Assists", "assists"),
-    ("steals", "Steals", "steals"),
-    ("fouls_drawn", "Fouls drawn", "fouls_drawn"),
+    ("pts", "PTS", "pts36", False),
+    ("fg3_pct", "3PT%", "fg3_pct", False),
+    ("ts_pct", "TS%", "ts_pct", False),
+    ("ast", "AST", "ast36", False),
+    ("oreb", "OREB", "oreb36", False),
+    ("dreb", "DREB", "dreb36", False),
+    ("stl", "STL", "stl36", False),
+    ("blk", "BLK", "blk36", False),
+    ("fouls_drawn", "Fouls Drawn", "fd36", False),
+    # Fewer turnovers per 100 is better, so the percentile is flipped: on a
+    # radar every spoke has to mean "further out is better" or the shape is a
+    # lie. Same for the two defensive axes.
+    ("ball_security", "Ball Security", "tov100", True),
+    ("opp_fg_pct", "Opp FG%", "opp_fg_pct", True),
+    ("drtg", "DRTG", "drtg", True),
 ]
 
+# Short labels on purpose: a long one forces wide margins into the radar's
+# viewBox, which shrinks the plot itself. The table view carries the full name.
 TEAM_RADAR = [
-    ("point_diff", "Point diff", "point_diff"),
-    ("pace", "Pace", "possessions_avg"),
-    # Short labels on purpose: a long one forces wide margins into the radar's
-    # viewBox, which shrinks the plot itself. The table view carries the full name.
-    ("fouls_drawn", "Fouls /100", "fouls_drawn_per100"),
-    ("max_run", "Best run", "max_run"),
-    ("clutch", "Clutch pts", "clutch_pts_for"),
+    ("point_diff", "Point diff", "point_diff", False),
+    ("pace", "Pace", "possessions_avg", False),
+    ("fouls_drawn", "Fouls /100", "fouls_drawn_per100", False),
+    ("max_run", "Best run", "max_run", False),
+    ("clutch", "Clutch pts", "clutch_pts_for", False),
 ]
 
 
@@ -90,48 +108,99 @@ def _percentile(values: list[float], target: float) -> float:
     return round(100.0 * (below + 0.5 * equal) / len(values), 1)
 
 
-def _radar(field: list[dict], subject: dict, axes: list[tuple[str, str, str]]) -> list[dict]:
+def _radar(field: list[dict], subject: dict, axes) -> list[dict]:
+    """Percentile-rank the subject against the field on each axis.
+
+    `axes` entries are (key, label, metric, lower_is_better). Where lower is
+    better the percentile is flipped, so the outer edge always means "good" —
+    a radar mixing the two directions cannot be read at a glance.
+    """
     out = []
-    for key, label, column in axes:
-        value = subject.get(column)
+    for key, label, metric, lower_is_better in axes:
+        value = subject.get(metric)
         if value is None:
             continue
-        peers = [r[column] for r in field if r.get(column) is not None]
+        peers = [r[metric] for r in field if r.get(metric) is not None]
+        pct = _percentile(peers, float(value))
+        if lower_is_better:
+            pct = round(100.0 - pct, 1)
         out.append({
             "key": key,
             "label": label,
             "value": round(float(value), 2),
-            "percentile": _percentile(peers, float(value)),
+            "percentile": pct,
+            "lower_is_better": lower_is_better,
         })
     return out
 
 
+# A percentage from three attempts is not a skill measurement, so a player
+# below these thresholds simply has no value on that axis rather than a
+# flattering or damning one.
+MIN_FG3A = 20
+MIN_OPP_FGA = 100
+
+
+def _derived(row: dict) -> dict:
+    """The twelve radar metrics, from the stored sums.
+
+    Rates, not totals — a radar on totals draws minutes played. Percentages
+    are kept as percentages so the direct labels read the way basketball
+    numbers normally do.
+    """
+    secs = row.get("seconds") or 0
+    poss = row.get("poss_share") or 0
+
+    def per36(column: str) -> float | None:
+        return None if not secs else (row.get(column) or 0) * SECONDS_PER_36 / secs
+
+    def per100(column: str) -> float | None:
+        return None if not poss else 100.0 * (row.get(column) or 0) / poss
+
+    fg3a = row.get("fg3a") or 0
+    fga = (row.get("fg2a") or 0) + fg3a
+    fta = row.get("fta") or 0
+    # True shooting: points per scoring attempt, where a trip to the line is
+    # worth 0.44 of one. Counts twos, threes and free throws in a single
+    # number, which is why it beats raw FG%.
+    ts_attempts = fga + 0.44 * fta
+    opp_fga = row.get("opp_fga") or 0
+
+    return {
+        "pts36": per36("points"),
+        "fg3_pct": (100.0 * (row.get("fg3m") or 0) / fg3a) if fg3a >= MIN_FG3A else None,
+        "ts_pct": (100.0 * (row.get("points") or 0) / (2 * ts_attempts)) if ts_attempts else None,
+        "ast36": per36("assists"),
+        "oreb36": per36("reb_off"),
+        "dreb36": per36("reb_def"),
+        "stl36": per36("steals"),
+        "blk36": per36("blocks_favour"),
+        "fd36": per36("fouls_drawn"),
+        "tov100": per100("turnovers"),
+        # On-court opponent numbers: shared by five players, so read as
+        # context rather than as an individual defensive rating.
+        "opp_fg_pct": (100.0 * (row.get("opp_fgm") or 0) / opp_fga) if opp_fga >= MIN_OPP_FGA else None,
+        "drtg": per100("opp_points") if (row.get("opp_points") is not None and poss) else None,
+    }
+
+
 def player_radar(conn, source: str, season_code: str, player: dict) -> list[dict]:
-    """Per-36 rates for the player, ranked against everyone who has played
-    enough for a rate to mean anything."""
-    seconds = player.get("seconds") or 0
-    if not seconds or (player.get("games_played") or 0) < RADAR_MIN_GAMES:
+    """Twelve rate metrics, ranked against everyone who has played enough for
+    a rate to mean anything."""
+    if not (player.get("seconds") or 0) or (player.get("games_played") or 0) < RADAR_MIN_GAMES:
         return []
 
     rows = _rows(conn.execute(
-        """SELECT points, reb_total, assists, steals, fouls_drawn, seconds
+        """SELECT points, reb_off, reb_def, assists, steals, blocks_favour,
+                  turnovers, fouls_drawn, fg2a, fg3m, fg3a, fta, seconds,
+                  poss_share, opp_fgm, opp_fga, opp_points
            FROM player_season_metrics
            WHERE source=? AND season_code=? AND games_played >= ? AND seconds > 0""",
         (source, season_code, RADAR_MIN_GAMES),
     ))
 
-    def rate(row: dict, column: str) -> float | None:
-        secs = row.get("seconds") or 0
-        if not secs:
-            return None
-        return (row.get(column) or 0) * SECONDS_PER_36 / secs
-
-    field = [
-        {column: rate(r, column) for _, _, column in PLAYER_RADAR}
-        for r in rows
-    ]
-    subject = {column: rate(player, column) for _, _, column in PLAYER_RADAR}
-    return _radar(field, subject, PLAYER_RADAR)
+    field = [_derived(r) for r in rows]
+    return _radar(field, _derived(player), PLAYER_RADAR)
 
 
 def team_radar(conn, source: str, season_code: str, team: dict) -> list[dict]:

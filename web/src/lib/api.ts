@@ -186,6 +186,8 @@ export interface RadarAxis {
   value: number;
   /** Rank against the league, 0-100 — the only thing the radius encodes. */
   percentile: number;
+  /** Smaller raw value is better; the percentile is already flipped. */
+  lower_is_better?: boolean;
 }
 
 export interface RosterRow {

@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from metrics import clutch as clutch_mod
+from metrics import defense as defense_mod
 from metrics import leads as leads_mod
 from metrics import runs as runs_mod
 from metrics.lineups import track_lineups
@@ -100,6 +101,7 @@ def _compute_game(conn, source, season_code, game, summary: SeasonSummary) -> No
     totals = {r["is_home"]: r for r in lines if r["entry_type"] == "total"}
 
     timeline = lineups = pm = clutch_stats = run_best = lead_stats = None
+    defense = None
     if game["pbp_status"] == "ok":
         pbp = conn.execute(
             """SELECT quarter, play_number, play_type, team_code, player_code,
@@ -113,6 +115,7 @@ def _compute_game(conn, source, season_code, game, summary: SeasonSummary) -> No
             starters_away = {r["player_code"] for r in players if not r["is_home"] and r["start_five"]}
             lineups = track_lineups(timeline, starters_home, starters_away)
             pm = compute_plus_minus(timeline, lineups)
+            defense = defense_mod.compute_on_court_defense(timeline, lineups)
             clutch_stats = clutch_mod.compute_clutch(timeline, lineups)
             run_best = runs_mod.max_runs(timeline)
             lead_stats = leads_mod.compute_leads(timeline)
@@ -144,15 +147,19 @@ def _compute_game(conn, source, season_code, game, summary: SeasonSummary) -> No
             "clutch_seconds": clutch_stats.player_seconds.get(p, 0.0) if has_pbp else None,
             "clutch_points": clutch_stats.player_points.get(p, 0) if has_pbp else None,
             "clutch_pm": clutch_stats.player_pm.get(p, 0) if has_pbp else None,
+            "opp_fgm": defense.opp_fgm.get(p, 0) if defense else None,
+            "opp_fga": defense.opp_fga.get(p, 0) if defense else None,
+            "opp_points": defense.opp_points.get(p, 0) if defense else None,
         })
     conn.executemany(
         """INSERT INTO player_game_metrics
            (source, season_code, game_code, player_code, club_code, is_home, pir,
             pm_computed, seconds_computed, poss_share, fouls_drawn,
-            clutch_seconds, clutch_points, clutch_pm)
+            clutch_seconds, clutch_points, clutch_pm, opp_fgm, opp_fga, opp_points)
            VALUES (:source, :season_code, :game_code, :player_code, :club_code,
                    :is_home, :pir, :pm_computed, :seconds_computed, :poss_share,
-                   :fouls_drawn, :clutch_seconds, :clutch_points, :clutch_pm)""",
+                   :fouls_drawn, :clutch_seconds, :clutch_points, :clutch_pm,
+                   :opp_fgm, :opp_fga, :opp_points)""",
         [{**r, "source": source, "season_code": season_code, "game_code": game_code}
          for r in player_rows],
     )
@@ -201,6 +208,12 @@ def _compute_game(conn, source, season_code, game, summary: SeasonSummary) -> No
 def _rollup_players(conn, source: str, season_code: str) -> None:
     conn.execute(
         """INSERT INTO player_season_metrics
+           (source, season_code, player_code, player_name, clubs, games_played,
+            seconds, points, reb_total, assists, steals, blocks_favour,
+            turnovers, fouls_drawn, pir_total, pir_avg, pir_per36, pm_total,
+            pm_per36, clutch_seconds, clutch_points, clutch_pm,
+            fouls_drawn_per100, reb_off, reb_def, fg2m, fg2a, fg3m, fg3a,
+            ftm, fta, opp_fgm, opp_fga, opp_points, poss_share)
            SELECT b.source, b.season_code, b.player_code,
                   MAX(b.player_name),
                   GROUP_CONCAT(DISTINCT b.club_code),
@@ -214,7 +227,16 @@ def _rollup_players(conn, source: str, season_code: str) -> None:
                   SUM(m.pm_computed),
                   36.0 * 60 * SUM(m.pm_computed) / NULLIF(SUM(b.seconds_played), 0),
                   SUM(m.clutch_seconds), SUM(m.clutch_points), SUM(m.clutch_pm),
-                  100.0 * SUM(b.fouls_received) / NULLIF(SUM(m.poss_share), 0)
+                  100.0 * SUM(b.fouls_received) / NULLIF(SUM(m.poss_share), 0),
+                  SUM(b.reb_off), SUM(b.reb_def),
+                  SUM(b.fg2m), SUM(b.fg2a), SUM(b.fg3m), SUM(b.fg3a),
+                  SUM(b.ftm), SUM(b.fta),
+                  SUM(m.opp_fgm), SUM(m.opp_fga), SUM(m.opp_points),
+                  -- Opponent possessions faced ~= this player's share of the
+                  -- game's possessions. poss_share is already minutes-weighted,
+                  -- and both teams see almost the same number of possessions,
+                  -- so it stands in for the denominator of DRTG.
+                  SUM(m.poss_share)
            FROM boxscore_lines b
            JOIN player_game_metrics m
              ON m.source = b.source AND m.season_code = b.season_code

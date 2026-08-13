@@ -313,3 +313,65 @@ def test_player_radar_needs_a_real_sample(client, player_code):
     # the fixture has a single game, well under the games threshold, so a
     # per-36 rate would be noise and the radar is withheld rather than invented
     assert client.get(f"/api/players/{player_code}").json()["radar"] == []
+
+
+# --- 12-axis skill radar -----------------------------------------------------
+
+def test_radar_flips_percentiles_where_lower_is_better():
+    from app.queries import _radar
+    axes = [("tov", "Ball Security", "tov100", True),
+            ("pts", "PTS", "pts36", False)]
+    field = [{"tov100": 1.0, "pts36": 10.0},
+             {"tov100": 2.0, "pts36": 20.0},
+             {"tov100": 3.0, "pts36": 30.0}]
+    # fewest turnovers in the field must rank top, most must rank bottom
+    best = {a["key"]: a for a in _radar(field, field[0], axes)}
+    worst = {a["key"]: a for a in _radar(field, field[2], axes)}
+    assert best["tov"]["percentile"] > worst["tov"]["percentile"]
+    assert best["tov"]["lower_is_better"] is True
+    # a normal axis is untouched: most points ranks top
+    assert best["pts"]["percentile"] < worst["pts"]["percentile"]
+    assert worst["pts"]["lower_is_better"] is False
+
+
+def test_derived_shooting_metrics():
+    from app.queries import _derived
+    # 10 pts on 4 FGA (2 of them threes) and 2 FTA:
+    #   TS% = 100 * 10 / (2 * (4 + 0.44*2)) = 1000 / 9.76 = 102.46
+    row = {"points": 10, "seconds": 2160.0, "poss_share": 50.0,
+           "fg2a": 2, "fg3m": 1, "fg3a": 2, "fta": 2, "turnovers": 5}
+    d = _derived(row)
+    assert round(d["ts_pct"], 2) == 102.46
+    assert d["pts36"] == 10.0                       # exactly 36 minutes played
+    assert d["tov100"] == 10.0                      # 5 per 50 possessions
+    # 2 three-point attempts is far below the threshold, so no percentage
+    assert d["fg3_pct"] is None
+
+
+def test_derived_guards_thin_samples_and_missing_defence():
+    from app.queries import _derived, MIN_FG3A
+    row = {"points": 100, "seconds": 2160.0, "poss_share": 0,
+           "fg3m": 10, "fg3a": MIN_FG3A, "opp_fga": 3, "opp_fgm": 2}
+    d = _derived(row)
+    assert d["fg3_pct"] == 50.0          # exactly at the threshold, so counted
+    assert d["opp_fg_pct"] is None       # 3 opponent attempts is noise
+    assert d["tov100"] is None           # no possessions, no rate
+    assert d["drtg"] is None
+
+
+def test_player_radar_has_twelve_axes_with_real_data(client, api_conn, player_code):
+    # the fixture is one game, below the games threshold — so relax it
+    import app.queries as q
+    original = q.RADAR_MIN_GAMES
+    q.RADAR_MIN_GAMES = 1
+    try:
+        cache.clear()
+        radar = client.get(f"/api/players/{player_code}").json()["radar"]
+    finally:
+        q.RADAR_MIN_GAMES = original
+    keys = [a["key"] for a in radar]
+    # every axis present is one we declared, and the inverted ones are flagged
+    assert set(keys) <= {k for k, _, _, _ in q.PLAYER_RADAR}
+    assert all(0 <= a["percentile"] <= 100 for a in radar)
+    inverted = {a["key"] for a in radar if a.get("lower_is_better")}
+    assert inverted <= {"ball_security", "opp_fg_pct", "drtg"}

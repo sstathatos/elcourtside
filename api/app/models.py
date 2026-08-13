@@ -139,6 +139,10 @@ class RadarAxis(BaseModel):
     label: str
     value: float
     percentile: float  # rank against the league, 0-100 — the radar's only scale
+    # True where a smaller raw value is better (turnovers, opponent shooting).
+    # The percentile is already flipped, so the radar still reads
+    # "further out is better"; this flags it for the label and the table.
+    lower_is_better: bool = False
 
 
 class TeamDetail(TeamSeason):
