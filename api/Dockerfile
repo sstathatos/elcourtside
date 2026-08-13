@@ -26,6 +26,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 COPY --from=build /install /usr/local
 
+# Drop the packaging toolchain the base image ships. Nothing installs anything
+# at runtime, and leaving it in means carrying its CVEs: Trivy flagged
+# setuptools (CVE-2025-47273) and pip's vendored msgpack as fixable HIGHs that
+# simply do not need to exist here.
+RUN rm -rf /usr/local/lib/python*/site-packages/pip* \
+           /usr/local/lib/python*/site-packages/setuptools* \
+           /usr/local/lib/python*/site-packages/pkg_resources* \
+           /usr/local/bin/pip*
+
 # The cluster's securityContext enforces runAsNonRoot, so the image has to be
 # usable as a non-root UID rather than relying on the manifest to drop it.
 RUN useradd --uid 1000 --create-home --shell /usr/sbin/nologin app \

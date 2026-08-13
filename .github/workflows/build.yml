@@ -1,0 +1,172 @@
+name: Build, scan, publish, deploy
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "api/**"
+      - "web/**"
+      - ".github/workflows/build.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write # the tag-bump step commits to master
+  packages: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Gate: nothing is built or published until both suites pass. They run from
+  # the same test images used locally (`docker compose --profile test`), so a
+  # green CI and a green laptop mean the same thing.
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: api
+            context: ./api
+          - name: web
+            context: ./web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the ${{ matrix.name }} test image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.context }}/Dockerfile.test
+          load: true
+          tags: elcourtside-${{ matrix.name }}-test:ci
+          cache-from: type=gha,scope=${{ matrix.name }}-test
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}-test
+
+      - name: Run the ${{ matrix.name }} suite
+        run: docker run --rm elcourtside-${{ matrix.name }}-test:ci
+
+  # The chart is not published, but a broken template should fail here rather
+  # than in ArgoCD.
+  chart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - run: helm lint helm/elcourtside
+      - name: Render with production values
+        run: helm template elcourtside helm/elcourtside > /dev/null
+      - name: Render with the kind overrides
+        run: helm template elcourtside helm/elcourtside -f helm/values-kind.yaml > /dev/null
+
+  build:
+    needs: [test, chart]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: api
+            context: ./api
+          - name: web
+            context: ./web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Built locally first — the image is only pushed after the scan passes,
+      # so a vulnerable image never exists in the registry at all.
+      - name: Build ${{ matrix.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          load: true
+          tags: ghcr.io/${{ github.repository }}-${{ matrix.name }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+      - name: Scan ${{ matrix.name }} (Trivy)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ghcr.io/${{ github.repository }}-${{ matrix.name }}:${{ github.sha }}
+          # CRITICAL blocks; HIGH is reported below but non-blocking, because
+          # base images routinely carry transient HIGH CVEs with no fix yet.
+          severity: CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Report HIGH vulnerabilities (non-blocking)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ghcr.io/${{ github.repository }}-${{ matrix.name }}:${{ github.sha }}
+          severity: HIGH
+          exit-code: "0"
+
+      # Instant re-run from cache; :latest kept as a convenience alias, but
+      # the chart always pins the SHA.
+      - name: Push ${{ matrix.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}-${{ matrix.name }}:${{ github.sha }}
+            ghcr.io/${{ github.repository }}-${{ matrix.name }}:latest
+          cache-from: type=gha,scope=${{ matrix.name }}
+
+  # GitOps hand-off: pin the new tags in the Helm values and commit. ArgoCD
+  # sees the change and performs the rollout — CI never touches the cluster.
+  # No trigger loop: helm/** is outside this workflow's paths filter, and the
+  # commit is marked [skip ci] as a second guard.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pin both image tags
+        run: |
+          python3 - "$GITHUB_SHA" <<'PY'
+          import pathlib, re, sys
+
+          sha = sys.argv[1]
+          path = pathlib.Path("helm/elcourtside/values.yaml")
+          lines = path.read_text().splitlines()
+
+          # Both images have an identically indented `tag:` line, so the edit
+          # is scoped by which top-level block we are inside — a bare
+          # `sed s/tag:/` would rewrite whichever it hit first, or both.
+          section = None
+          changed = 0
+          for i, line in enumerate(lines):
+              if re.match(r"^[a-z]", line):
+                  section = line.split(":", 1)[0]
+              if section in ("api", "web") and re.match(r"^    tag:", line):
+                  lines[i] = f'    tag: "{sha}"'
+                  changed += 1
+
+          if changed != 2:
+              sys.exit(f"expected to pin 2 tags, pinned {changed} — values.yaml shape changed")
+
+          path.write_text("\n".join(lines) + "\n")
+          PY
+
+      - name: Commit the deploy
+        run: |
+          if git diff --quiet; then
+            echo "tags unchanged, nothing to commit"
+            exit 0
+          fi
+          git config user.name "sstathatos"
+          git config user.email "st.stathatos@gmail.com"
+          git add helm/elcourtside/values.yaml
+          git commit -m "chore: deploy elcourtside ${GITHUB_SHA::12} [skip ci]"
+          git push
