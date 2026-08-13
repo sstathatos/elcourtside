@@ -54,13 +54,12 @@ ingest:
 backup:
   enabled: true
   schedule: "30 4 * * *"
-  # Pinned to a *different* node than the data PVC: a pod cannot mount another
-  # node's local volume, so the snapshot has to travel over HTTP rather than
-  # by copying the file.
-  nodeSelector:
-    kubernetes.io/hostname: comrade2
-  # A nodeSelector alone cannot reach a tainted node, so pinning the backup at
-  # a control-plane node (as the local kind cluster does) also needs this.
+  # Placement is handled by anti-affinity against the API pod (see the
+  # CronJob template), which cannot go stale the way a hostname does. This is
+  # only for extra constraints — e.g. keeping backups off a particular node.
+  nodeSelector: {}
+  # Needed if the only node satisfying the anti-affinity is tainted, as on the
+  # local kind cluster where the other node is the control plane.
   tolerations: []
   retention: 7
   image:

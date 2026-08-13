@@ -37,10 +37,23 @@ spec:
             {{- include "elcourtside.componentLabels" (dict "Release" .Release "component" "backup") | nindent 12 }}
         spec:
           restartPolicy: OnFailure
-          # Pinned to a different node than the data volume on purpose. A pod
-          # cannot mount another node's local volume, so a copy that survives
-          # losing that node has to travel over the network — and it lands on
-          # a volume that is not on the node it is protecting against.
+          # Must not run on the node holding the data volume: a backup living
+          # on the disk it is protecting is not a backup. Expressed as
+          # anti-affinity against the API pod rather than a hostname, because
+          # the data volume binds wherever the API happens to be scheduled —
+          # a hardcoded node is a guess that silently becomes wrong. (It was:
+          # the first production sync put both on comrade2.)
+          #
+          # `required`, not `preferred`: on a single-node cluster this leaves
+          # the job Pending, which is the honest outcome. Quietly colocating
+          # would look like a working backup and not be one.
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - topologyKey: kubernetes.io/hostname
+                  labelSelector:
+                    matchLabels:
+                      {{- include "elcourtside.componentLabels" (dict "Release" .Release "component" "api") | nindent 22 }}
           {{- with .Values.backup.nodeSelector }}
           nodeSelector:
             {{- toYaml . | nindent 12 }}

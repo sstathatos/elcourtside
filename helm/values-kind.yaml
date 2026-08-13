@@ -29,12 +29,9 @@ persistence:
   backupSize: 1Gi
 
 backup:
-  # The whole point of a two-node kind cluster: prove the backup lands on a
-  # different node than the volume it is protecting. The data volume binds
-  # wherever the API pod runs (the worker), so the backup is pinned to the
-  # control-plane — which needs the toleration below to be schedulable at all.
-  nodeSelector:
-    kubernetes.io/hostname: elcourtside-control-plane
+  # No nodeSelector: the chart's anti-affinity already keeps the backup off
+  # the API's node. The API lands on the worker, so the only node left is the
+  # control plane — which is tainted, hence the toleration.
   tolerations:
     - key: node-role.kubernetes.io/control-plane
       operator: Exists
