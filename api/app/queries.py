@@ -23,6 +23,9 @@ log = logging.getLogger("api")
 # A column name cannot be a bound parameter, so anything that reaches ORDER BY
 # must come from a fixed mapping — never from the request string itself.
 
+# Stored columns only. The derived rates (TS%, DRTG, ...) are computed per row
+# after the query, so an ORDER BY on them would sort a page rather than the
+# league — the table sorts those client-side instead.
 PLAYER_SORTS = {
     "pir_avg": "pir_avg",
     "pir_total": "pir_total",
@@ -89,12 +92,19 @@ PLAYER_RADAR = [
 
 # Short labels on purpose: a long one forces wide margins into the radar's
 # viewBox, which shrinks the plot itself. The table view carries the full name.
+#
+# Pace is deliberately absent: fast is not better than slow, and every spoke on
+# this chart has to mean "further out is better" or the shape misleads. It is a
+# column instead.
 TEAM_RADAR = [
-    ("point_diff", "Point diff", "point_diff", False),
-    ("pace", "Pace", "possessions_avg", False),
+    ("ortg", "ORTG", "ortg", False),
+    ("efg", "eFG%", "efg_pct", False),
+    ("oreb", "OREB%", "oreb_pct", False),
     ("fouls_drawn", "Fouls /100", "fouls_drawn_per100", False),
-    ("max_run", "Best run", "max_run", False),
-    ("clutch", "Clutch pts", "clutch_pts_for", False),
+    ("tov", "Ball Security", "tov100", True),
+    ("dreb", "DREB%", "dreb_pct", False),
+    ("opp_efg", "Opp eFG%", "opp_efg_pct", True),
+    ("drtg", "DRTG", "drtg", True),
 ]
 
 
@@ -187,6 +197,55 @@ def _derived(row: dict) -> dict:
     }
 
 
+def _derived_team(row: dict) -> dict:
+    """Team rates: ratings, shooting and rebounding.
+
+    Ratings are per 100 possessions, which is what makes clubs comparable
+    regardless of pace — a fast team scores more points without being better.
+    Defensive rates need the opponent totals stored alongside a club's own.
+    """
+    poss = row.get("possessions") or 0
+    opp_poss = row.get("opp_possessions") or 0
+
+    def shooting(prefix: str) -> tuple[float | None, float | None]:
+        p = f"{prefix}_" if prefix else ""
+        fg2m, fg3m = row.get(f"{p}fg2m") or 0, row.get(f"{p}fg3m") or 0
+        fga = (row.get(f"{p}fg2a") or 0) + (row.get(f"{p}fg3a") or 0)
+        fta = row.get(f"{p}fta") or 0
+        pts = row.get(f"{p}points") or 0
+        # eFG% credits a three as 1.5 makes, which is the whole point of it.
+        efg = (100.0 * (fg2m + fg3m + 0.5 * fg3m) / fga) if fga else None
+        attempts = fga + 0.44 * fta
+        ts = (100.0 * pts / (2 * attempts)) if attempts else None
+        return efg, ts
+
+    efg, ts = shooting("")
+    opp_efg, _ = shooting("opp")
+
+    oreb, dreb = row.get("reb_off") or 0, row.get("reb_def") or 0
+    opp_oreb, opp_dreb = row.get("opp_reb_off") or 0, row.get("opp_reb_def") or 0
+    ortg = (100.0 * (row.get("points") or 0) / poss) if poss else None
+    drtg = (100.0 * (row.get("opp_points") or 0) / opp_poss) if opp_poss else None
+
+    return {
+        "ortg": ortg,
+        "drtg": drtg,
+        "net_rtg": (ortg - drtg) if (ortg is not None and drtg is not None) else None,
+        "efg_pct": efg,
+        "ts_pct": ts,
+        "opp_efg_pct": opp_efg,
+        # Rebounding as a share of what was available, not a raw count: a
+        # slow team grabs fewer boards without rebounding worse.
+        "oreb_pct": (100.0 * oreb / (oreb + opp_dreb)) if (oreb + opp_dreb) else None,
+        "dreb_pct": (100.0 * dreb / (dreb + opp_oreb)) if (dreb + opp_oreb) else None,
+        "tov100": (100.0 * (row.get("turnovers") or 0) / poss) if poss else None,
+        "opp_tov100": (100.0 * (row.get("opp_turnovers") or 0) / opp_poss) if opp_poss else None,
+        "ast100": (100.0 * (row.get("assists") or 0) / poss) if poss else None,
+        "stl100": (100.0 * (row.get("steals") or 0) / opp_poss) if opp_poss else None,
+        "blk100": (100.0 * (row.get("blocks_favour") or 0) / opp_poss) if opp_poss else None,
+    }
+
+
 def _radar_columns_missing(exc: sqlite3.OperationalError) -> bool:
     return "no such column" in str(exc)
 
@@ -231,15 +290,17 @@ def team_radar(conn, source: str, season_code: str, team: dict) -> list[dict]:
     the page.
     """
     try:
-        field = _rows(conn.execute(
-            """SELECT t.possessions_avg, t.fouls_drawn_per100, t.max_run,
-                      t.clutch_pts_for, s.point_diff
-               FROM team_season_metrics t
-               LEFT JOIN standings s ON s.source=t.source AND s.season_code=t.season_code
-                                    AND s.club_code=t.club_code
-               WHERE t.source=? AND t.season_code=?""",
-            (source, season_code),
-        ))
+        field = [
+            {**r, **_derived_team(r)}
+            for r in _rows(conn.execute(
+                """SELECT t.*, s.point_diff
+                   FROM team_season_metrics t
+                   LEFT JOIN standings s ON s.source=t.source AND s.season_code=t.season_code
+                                        AND s.club_code=t.club_code
+                   WHERE t.source=? AND t.season_code=?""",
+                (source, season_code),
+            ))
+        ]
     except sqlite3.OperationalError as exc:
         if _radar_columns_missing(exc):
             log.warning("team radar unavailable for %s: %s", season_code, exc)
@@ -262,11 +323,33 @@ def latest_season(conn, source: str) -> str | None:
     return row["season_code"] if row else None
 
 
+def seasons_version(conn, source: str) -> str:
+    """Cache version for the season *list*.
+
+    Deliberately not the newest season's stamp: ingesting an older season adds
+    a row without touching that stamp, so the list stayed cached and the new
+    season never appeared. This changes whenever any season is recomputed, and
+    when the number of seasons changes.
+    """
+    row = conn.execute(
+        """SELECT COUNT(*) AS n, MAX(value) AS newest FROM metrics_meta
+           WHERE key LIKE ?""",
+        (f"computed_at:{source}:%",),
+    ).fetchone()
+    return f"{row['n']}:{row['newest']}" if row else "empty"
+
+
 def list_seasons(conn, source: str) -> list[dict]:
     """Seasons with final games. `has_pbp` is false for the pre-2007 era,
-    where the UI must label metrics as boxscore-only."""
+    where the UI must label metrics as boxscore-only.
+
+    `winner_club_code` is the club that won the title, which is *not* the top
+    of the standings: those rank the regular season only, and the Final Four
+    decides the championship.
+    """
     return _rows(conn.execute(
         """SELECT g.season_code, s.name AS season_name, s.year,
+                  s.winner_club_code,
                   COUNT(*) AS games,
                   SUM(g.pbp_status = 'ok') AS games_with_pbp,
                   (SELECT value FROM metrics_meta
@@ -429,8 +512,8 @@ def teams(conn, source: str, season_code: str, sort: str = "max_run",
           desc: bool = True) -> list[dict]:
     column = TEAM_SORTS[sort]
     order = "DESC" if desc else "ASC"
-    return _rows(conn.execute(
-        f"""SELECT t.club_code, s.club_name, t.games, t.possessions_avg,
+    rows = _rows(conn.execute(
+        f"""SELECT t.*, s.club_name, t.games, t.possessions_avg,
                    t.fouls_drawn_per100, t.max_run, t.max_run_game,
                    t.max_blown_lead, t.max_blown_lead_game, t.clutch_pts_for,
                    t.clutch_pts_against, t.clutch_seconds,
@@ -442,6 +525,11 @@ def teams(conn, source: str, season_code: str, sort: str = "max_run",
             ORDER BY t.{column} IS NULL, t.{column} {order}""",
         (source, season_code),
     ))
+    # Same derived definitions the team detail and radar use, so a column,
+    # a spoke and a stat tile can never disagree.
+    for r in rows:
+        r.update(_derived_team(r))
+    return rows
 
 
 def team(conn, source: str, season_code: str, club_code: str) -> dict | None:
@@ -456,6 +544,7 @@ def team(conn, source: str, season_code: str, club_code: str) -> dict | None:
     if row is None:
         return None
     detail = dict(row)
+    detail.update(_derived_team(detail))
     detail["radar"] = team_radar(conn, source, season_code, detail)
     # The squad as registered, from the people registry rather than from who
     # happened to appear in a boxscore — so a signing who has not played yet
@@ -512,11 +601,13 @@ def players(conn, source: str, season_code: str, *, sort: str = "pir_avg",
     # has one `people` row per club/type, so joining would multiply the rows.
     # Its placeholders sit in the SELECT list, so they bind ahead of the rest.
     params = [source, season_code, *params]
-    return _rows(conn.execute(
+    rows = _rows(conn.execute(
         f"""SELECT player_code, player_name, clubs, games_played, seconds, points,
                    reb_total, assists, steals, blocks_favour, turnovers, fouls_drawn,
                    pir_total, pir_avg, pir_per36, pm_total, pm_per36,
                    clutch_seconds, clutch_points, clutch_pm, fouls_drawn_per100,
+                   reb_off, reb_def, fg2a, fg3m, fg3a, fta, poss_share,
+                   opp_fgm, opp_fga, opp_points,
                    (SELECT p.headshot_url FROM people p
                      WHERE p.source=? AND p.season_code=?
                        AND p.person_code=player_season_metrics.player_code
@@ -526,6 +617,11 @@ def players(conn, source: str, season_code: str, *, sort: str = "pir_avg",
             LIMIT ? OFFSET ?""",
         params,
     ))
+    # The same derived rates the radar uses, so a column and a spoke can never
+    # disagree — one definition, two presentations.
+    for r in rows:
+        r.update(_derived(r))
+    return rows
 
 
 def player(conn, source: str, season_code: str, player_code: str) -> dict | None:

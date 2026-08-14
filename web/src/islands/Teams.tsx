@@ -21,6 +21,8 @@ export default function Teams() {
   return club ? <TeamDetail club={club} /> : <TeamTable />;
 }
 
+// Every column sorts client-side: the league is 18-20 clubs and all of them
+// are loaded, so unlike the paged player leaderboard, sorting here is honest.
 const COLUMNS: Array<{
   key: keyof TeamSeason;
   label: string;
@@ -30,7 +32,21 @@ const COLUMNS: Array<{
   { key: 'wins', label: 'W', metric: 'w' },
   { key: 'losses', label: 'L', metric: 'l' },
   { key: 'point_diff', label: 'Diff', metric: 'diff' },
-  { key: 'possessions_avg', label: 'Poss/g', metric: 'poss_avg', decimals: 1 },
+  // Ratings first — the headline of any team page, and pace-independent.
+  { key: 'ortg', label: 'ORTG', metric: 'ortg', decimals: 1 },
+  { key: 'drtg', label: 'DRTG', metric: 'drtg_team', decimals: 1 },
+  { key: 'net_rtg', label: 'NET', metric: 'net_rtg', decimals: 1 },
+  { key: 'efg_pct', label: 'eFG%', metric: 'efg', decimals: 1 },
+  { key: 'ts_pct', label: 'TS%', metric: 'ts_team', decimals: 1 },
+  { key: 'opp_efg_pct', label: 'Opp eFG%', metric: 'opp_efg', decimals: 1 },
+  { key: 'oreb_pct', label: 'OREB%', metric: 'oreb_pct', decimals: 1 },
+  { key: 'dreb_pct', label: 'DREB%', metric: 'dreb_pct', decimals: 1 },
+  { key: 'tov100', label: 'TOV/100', metric: 'tov_team', decimals: 1 },
+  { key: 'opp_tov100', label: 'Opp TOV/100', metric: 'opp_tov', decimals: 1 },
+  { key: 'ast100', label: 'AST/100', metric: 'ast_team', decimals: 1 },
+  { key: 'stl100', label: 'STL/100', metric: 'stl_team', decimals: 1 },
+  { key: 'blk100', label: 'BLK/100', metric: 'blk_team', decimals: 1 },
+  { key: 'possessions_avg', label: 'Pace', metric: 'poss_avg', decimals: 1 },
   { key: 'fouls_drawn_per100', label: 'FD/100', metric: 'fd100', decimals: 1 },
   { key: 'max_run', label: 'Best run', metric: 'max_run' },
   { key: 'max_blown_lead', label: 'Blown lead', metric: 'blown_lead' },
@@ -121,11 +137,13 @@ function TeamDetail({ club }: { club: string }) {
             <div className="detail-split">
               <div className="stat-row">
                 <Stat k="Record" v={`${t.wins ?? '—'}-${t.losses ?? '—'}`} />
-                <Stat k="Point diff" v={signed(t.point_diff)} />
-                <Stat k="Poss / game" v={num(t.possessions_avg, 1)} />
-                <Stat k="Fouls drawn /100" v={num(t.fouls_drawn_per100, 1)} />
-                <Stat k="Biggest run" v={t.max_run ?? '—'} />
-                <Stat k="Biggest blown lead" v={t.max_blown_lead ?? '—'} />
+                <Stat k="Net rating" v={signed(t.net_rtg ? Math.round(t.net_rtg * 10) / 10 : null)} />
+                <Stat k="Offensive rtg" v={num(t.ortg, 1)} />
+                <Stat k="Defensive rtg" v={num(t.drtg, 1)} />
+                <Stat k="eFG%" v={num(t.efg_pct, 1)} />
+                <Stat k="Opp eFG%" v={num(t.opp_efg_pct, 1)} />
+                <Stat k="OREB% / DREB%" v={`${num(t.oreb_pct, 0)} / ${num(t.dreb_pct, 0)}`} />
+                <Stat k="Pace" v={num(t.possessions_avg, 1)} />
               </div>
               {t.radar?.length ? <Radar axes={t.radar} title="Club profile" /> : null}
             </div>

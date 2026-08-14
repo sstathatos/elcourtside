@@ -516,6 +516,19 @@ td.neg {
   padding-bottom: 0.3rem;
 }
 
+/* The title winner, marked in the standings so topping the regular season is
+   not mistaken for winning the league. */
+.champion {
+  background: var(--accent);
+  color: #17150f;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.05rem 0.4rem;
+  white-space: nowrap;
+}
+
 /* --- radar ---------------------------------------------------------------- */
 
 .radar {

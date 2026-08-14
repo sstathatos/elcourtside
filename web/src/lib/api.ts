@@ -18,6 +18,8 @@ export interface Season {
   season_code: string;
   season_name: string | null;
   year: number | null;
+  /** Title winner — decided by the Final Four, not by topping the standings. */
+  winner_club_code: string | null;
   games: number;
   games_with_pbp: number;
   computed_at: string | null;
@@ -161,6 +163,21 @@ export interface TeamSeason {
   losses: number | null;
   point_diff: number | null;
   rank: number | null;
+  /* Derived team rates, computed by the API from stored season totals —
+     the same definitions the radar uses. */
+  ortg: number | null;
+  drtg: number | null;
+  net_rtg: number | null;
+  efg_pct: number | null;
+  ts_pct: number | null;
+  opp_efg_pct: number | null;
+  oreb_pct: number | null;
+  dreb_pct: number | null;
+  tov100: number | null;
+  opp_tov100: number | null;
+  ast100: number | null;
+  stl100: number | null;
+  blk100: number | null;
 }
 
 export interface TeamGameLogRow {
@@ -236,6 +253,20 @@ export interface PlayerSeason {
   clutch_pm: number | null;
   fouls_drawn_per100: number | null;
   headshot_url: string | null;
+  /* Derived rates, computed by the API from the stored sums — the same
+     definitions the radar uses, so a column and a spoke cannot disagree. */
+  pts36: number | null;
+  fg3_pct: number | null;
+  ts_pct: number | null;
+  ast36: number | null;
+  oreb36: number | null;
+  dreb36: number | null;
+  stl36: number | null;
+  blk36: number | null;
+  fd36: number | null;
+  tov100: number | null;
+  opp_fg_pct: number | null;
+  drtg: number | null;
 }
 
 export interface PlayerGameLogRow {

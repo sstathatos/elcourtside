@@ -104,9 +104,23 @@ function PlayerTable() {
                   <Th metric="ast" label="Ast" />
                   <Th metric="pir_avg" label="PIR/g" />
                   <Th metric="pir_per36" label="PIR/36" />
-                  <Th metric="pm_total" label="+/-" alignEnd />
-                  <Th metric="clutch_pm" label="Clutch +/-" alignEnd />
-                  <Th metric="fd100" label="FD/100" alignEnd />
+                  <Th metric="pm_total" label="+/-" />
+                  <Th metric="clutch_pm" label="Clutch +/-" />
+                  {/* The radar's twelve metrics, as columns. Same values from
+                      the same API fields, so the chart and the table cannot
+                      drift apart. */}
+                  <Th metric="pts36" label="PTS/36" />
+                  <Th metric="ts_pct" label="TS%" />
+                  <Th metric="fg3_pct" label="3PT%" />
+                  <Th metric="ast36" label="AST/36" />
+                  <Th metric="oreb36" label="OREB/36" />
+                  <Th metric="dreb36" label="DREB/36" />
+                  <Th metric="stl36" label="STL/36" />
+                  <Th metric="blk36" label="BLK/36" />
+                  <Th metric="fd36" label="FD/36" />
+                  <Th metric="tov100" label="TOV/100" alignEnd />
+                  <Th metric="opp_fg_pct" label="Opp FG%" alignEnd />
+                  <Th metric="drtg" label="DRTG" alignEnd />
                 </tr>
               </thead>
               <tbody>
@@ -130,7 +144,18 @@ function PlayerTable() {
                     <td className="num">{num(p.pir_per36, 1)}</td>
                     <td className={signClass(p.pm_total)}>{signed(p.pm_total)}</td>
                     <td className={signClass(p.clutch_pm)}>{signed(p.clutch_pm)}</td>
-                    <td className="num">{num(p.fouls_drawn_per100, 1)}</td>
+                    <td className="num">{num(p.pts36, 1)}</td>
+                    <td className="num">{num(p.ts_pct, 1)}</td>
+                    <td className="num">{num(p.fg3_pct, 1)}</td>
+                    <td className="num">{num(p.ast36, 1)}</td>
+                    <td className="num">{num(p.oreb36, 1)}</td>
+                    <td className="num">{num(p.dreb36, 1)}</td>
+                    <td className="num">{num(p.stl36, 1)}</td>
+                    <td className="num">{num(p.blk36, 1)}</td>
+                    <td className="num">{num(p.fd36, 1)}</td>
+                    <td className="num">{num(p.tov100, 1)}</td>
+                    <td className="num">{num(p.opp_fg_pct, 1)}</td>
+                    <td className="num">{num(p.drtg, 1)}</td>
                   </tr>
                 ))}
               </tbody>

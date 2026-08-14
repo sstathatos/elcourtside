@@ -251,6 +251,14 @@ def _rollup_players(conn, source: str, season_code: str) -> None:
 def _rollup_teams(conn, source: str, season_code: str) -> None:
     conn.execute(
         """INSERT INTO team_season_metrics
+           (source, season_code, club_code, games, possessions_avg,
+            fouls_drawn_per100, max_run, max_run_game, max_blown_lead,
+            max_blown_lead_game, clutch_pts_for, clutch_pts_against,
+            clutch_seconds, points, fg2m, fg2a, fg3m, fg3a, ftm, fta,
+            reb_off, reb_def, assists, steals, blocks_favour, turnovers,
+            possessions, opp_points, opp_fg2m, opp_fg2a, opp_fg3m, opp_fg3a,
+            opp_ftm, opp_fta, opp_reb_off, opp_reb_def, opp_turnovers,
+            opp_possessions)
            SELECT t.source, t.season_code, t.club_code,
                   COUNT(*),
                   AVG(t.possessions),
@@ -266,8 +274,32 @@ def _rollup_teams(conn, source: str, season_code: str) -> None:
                       AND x.club_code = t.club_code AND x.lost = 1
                       AND x.max_lead IS NOT NULL
                     ORDER BY x.max_lead DESC LIMIT 1),
-                  SUM(t.clutch_pts_for), SUM(t.clutch_pts_against), SUM(t.clutch_seconds)
+                  SUM(t.clutch_pts_for), SUM(t.clutch_pts_against), SUM(t.clutch_seconds),
+                  -- Own totals, from this club's team line in each boxscore.
+                  SUM(own.points), SUM(own.fg2m), SUM(own.fg2a),
+                  SUM(own.fg3m), SUM(own.fg3a), SUM(own.ftm), SUM(own.fta),
+                  SUM(own.reb_off), SUM(own.reb_def), SUM(own.assists),
+                  SUM(own.steals), SUM(own.blocks_favour), SUM(own.turnovers),
+                  SUM(t.possessions),
+                  -- Opponent totals, from the other side of the same game.
+                  -- Without these there is no honest defensive rate: a club's
+                  -- own boxscore says nothing about the shooting it allowed.
+                  SUM(opp.points), SUM(opp.fg2m), SUM(opp.fg2a),
+                  SUM(opp.fg3m), SUM(opp.fg3a), SUM(opp.ftm), SUM(opp.fta),
+                  SUM(opp.reb_off), SUM(opp.reb_def), SUM(opp.turnovers),
+                  SUM(o.possessions)
            FROM team_game_metrics t
+           JOIN boxscore_lines own
+             ON own.source = t.source AND own.season_code = t.season_code
+            AND own.game_code = t.game_code AND own.is_home = t.is_home
+            AND own.entry_type = 'total'
+           JOIN boxscore_lines opp
+             ON opp.source = t.source AND opp.season_code = t.season_code
+            AND opp.game_code = t.game_code AND opp.is_home <> t.is_home
+            AND opp.entry_type = 'total'
+           JOIN team_game_metrics o
+             ON o.source = t.source AND o.season_code = t.season_code
+            AND o.game_code = t.game_code AND o.is_home <> t.is_home
            WHERE t.source = ? AND t.season_code = ?
            GROUP BY t.club_code""",
         (source, season_code),

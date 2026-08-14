@@ -8,7 +8,7 @@ ENGINE_VERSION is stored in metrics_meta at compute time; bump it when a
 formula changes so stale seasons can be detected and recomputed.
 """
 
-ENGINE_VERSION = 2  # added shooting/rebound splits and on-court defence
+ENGINE_VERSION = 3  # + team shooting/rebounding and opponent totals
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS player_game_metrics (
@@ -112,6 +112,34 @@ CREATE TABLE IF NOT EXISTS team_season_metrics (
   clutch_pts_for      INTEGER,
   clutch_pts_against  INTEGER,
   clutch_seconds      REAL,
+  -- Season totals for the club and, in the same row, for its opponents.
+  -- Opponent sums are what make defensive rates possible at all: a club's own
+  -- boxscore says nothing about the shooting it allowed.
+  points              INTEGER,
+  fg2m                INTEGER,
+  fg2a                INTEGER,
+  fg3m                INTEGER,
+  fg3a                INTEGER,
+  ftm                 INTEGER,
+  fta                 INTEGER,
+  reb_off             INTEGER,
+  reb_def             INTEGER,
+  assists             INTEGER,
+  steals              INTEGER,
+  blocks_favour       INTEGER,
+  turnovers           INTEGER,
+  possessions         REAL,
+  opp_points          INTEGER,
+  opp_fg2m            INTEGER,
+  opp_fg2a            INTEGER,
+  opp_fg3m            INTEGER,
+  opp_fg3a            INTEGER,
+  opp_ftm             INTEGER,
+  opp_fta             INTEGER,
+  opp_reb_off         INTEGER,
+  opp_reb_def         INTEGER,
+  opp_turnovers       INTEGER,
+  opp_possessions     REAL,
   PRIMARY KEY (source, season_code, club_code)
 );
 
@@ -143,6 +171,19 @@ CREATE TABLE IF NOT EXISTS metrics_meta (
 _ADDED_COLUMNS = {
     "player_game_metrics": [
         ("opp_fgm", "INTEGER"), ("opp_fga", "INTEGER"), ("opp_points", "INTEGER"),
+    ],
+    "team_season_metrics": [
+        ("points", "INTEGER"), ("fg2m", "INTEGER"), ("fg2a", "INTEGER"),
+        ("fg3m", "INTEGER"), ("fg3a", "INTEGER"), ("ftm", "INTEGER"),
+        ("fta", "INTEGER"), ("reb_off", "INTEGER"), ("reb_def", "INTEGER"),
+        ("assists", "INTEGER"), ("steals", "INTEGER"),
+        ("blocks_favour", "INTEGER"), ("turnovers", "INTEGER"),
+        ("possessions", "REAL"),
+        ("opp_points", "INTEGER"), ("opp_fg2m", "INTEGER"), ("opp_fg2a", "INTEGER"),
+        ("opp_fg3m", "INTEGER"), ("opp_fg3a", "INTEGER"), ("opp_ftm", "INTEGER"),
+        ("opp_fta", "INTEGER"), ("opp_reb_off", "INTEGER"),
+        ("opp_reb_def", "INTEGER"), ("opp_turnovers", "INTEGER"),
+        ("opp_possessions", "REAL"),
     ],
     "player_season_metrics": [
         ("reb_off", "INTEGER"), ("reb_def", "INTEGER"),

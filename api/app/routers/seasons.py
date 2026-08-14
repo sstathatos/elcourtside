@@ -17,10 +17,10 @@ router = APIRouter(prefix="/api", tags=["seasons"])
 @router.get("/seasons", response_model=list[Season])
 def list_seasons(request: Request, response: Response,
                  conn: sqlite3.Connection = Depends(get_conn)):
-    latest = queries.latest_season(conn, SOURCE)
-    # Versioned by the newest season's stamp: a recompute of any season also
-    # rewrites that stamp, and the list itself only changes on ingest.
-    version = cache.season_version(conn, SOURCE, latest) if latest else "empty"
+    # Versioned across *all* seasons: the newest season's stamp alone left an
+    # older season invisible after it was ingested, because adding it never
+    # touched that stamp.
+    version = queries.seasons_version(conn, SOURCE)
     key = ("seasons",)
     tag = cache.etag(key, version)
     if request.headers.get("if-none-match") == tag:

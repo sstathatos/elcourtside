@@ -302,11 +302,14 @@ def test_team_radar_ranks_against_the_league(client):
     assert [a["key"] for a in won]
     assert all(0 <= a["percentile"] <= 100 for a in won)
     # a club is ranked inside its own league, so the leader of a two-club field
-    # sits at 75 (midpoint rule), not 100 — what matters is the ordering
-    ist = next(a for a in won if a["key"] == "point_diff")
-    tel = next(a for a in lost if a["key"] == "point_diff")
+    # sits at 75 (midpoint rule), not 100 — what matters is the ordering.
+    # IST won 85-78, so it scored more per possession than TEL.
+    ist = next(a for a in won if a["key"] == "ortg")
+    tel = next(a for a in lost if a["key"] == "ortg")
     assert ist["percentile"] > tel["percentile"]
-    assert ist["value"] > 0 > tel["value"]
+    assert ist["value"] > tel["value"]
+    # the defensive axes are flagged as inverted so the radar reads correctly
+    assert next(a for a in won if a["key"] == "drtg")["lower_is_better"] is True
 
 
 def test_player_radar_needs_a_real_sample(client, player_code):

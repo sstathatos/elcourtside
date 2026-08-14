@@ -44,6 +44,9 @@ class Season(BaseModel):
     season_code: str
     season_name: str | None = None
     year: int | None = None
+    # The club that won the title. Not the top of the standings — those rank
+    # the regular season, and the Final Four decides the championship.
+    winner_club_code: str | None = None
     games: int
     games_with_pbp: int
     computed_at: str | None = None
