@@ -78,7 +78,15 @@ describe('shortDate', () => {
 });
 
 describe('isBoxscoreOnly', () => {
-  const season = { season_code: 'E2005', season_name: null, year: 2005, games: 200, computed_at: null };
+  // 2005-06 predates play-by-play; no Final Four winner recorded for it either
+  const season = {
+    season_code: 'E2005',
+    season_name: null,
+    year: 2005,
+    games: 200,
+    computed_at: null,
+    winner_club_code: null,
+  };
 
   it('flags the pre-2007 era, where no play-by-play exists', () => {
     expect(isBoxscoreOnly({ ...season, games_with_pbp: 0 })).toBe(true);
