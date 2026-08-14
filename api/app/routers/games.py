@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Res
 from app import queries
 from app.db import SOURCE, get_conn
 from app.deps import resolve_season, serve
-from app.models import GameDetail, GameSummary, GameTimeline
+from app.models import GameDetail, GameSummary, GameTimeline, Phase
 
 router = APIRouter(prefix="/api", tags=["games"])
 
@@ -19,13 +19,15 @@ def list_games(request: Request, response: Response,
                season: str | None = Query(None),
                round: int | None = Query(None, ge=1, description="filter by round"),
                club: str | None = Query(None, description="club code, home or away"),
+               phase: Phase | None = Query(None, description="stage: RS, PI, PO or FF"),
                limit: int = Query(50, ge=1, le=500),
                offset: int = Query(0, ge=0),
                conn: sqlite3.Connection = Depends(get_conn)):
     season = resolve_season(conn, season)
-    key = ("games", season, round, club, limit, offset)
+    key = ("games", season, round, club, phase.value if phase else None, limit, offset)
     return serve(request, response, conn, season, key,
                  lambda: queries.games(conn, SOURCE, season, round_=round, club=club,
+                                       phase=phase.value if phase else None,
                                        limit=limit, offset=offset))
 
 

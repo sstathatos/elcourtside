@@ -32,6 +32,16 @@ class PlayerSort(str, Enum):
     fouls_drawn_per100 = "fouls_drawn_per100"
 
 
+class Phase(str, Enum):
+    """Competition stage. Standings mean the regular season; the knockout
+    stages are results rather than a table."""
+
+    RS = "RS"
+    PI = "PI"
+    PO = "PO"
+    FF = "FF"
+
+
 class TeamSort(str, Enum):
     possessions_avg = "possessions_avg"
     fouls_drawn_per100 = "fouls_drawn_per100"

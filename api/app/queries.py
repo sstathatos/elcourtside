@@ -399,13 +399,24 @@ GAME_COLUMNS = """game_code, round, round_name, phase_type_code, utc_date, playe
                   winner_club_code, pbp_status"""
 
 
+# Competition stages, as the source labels them. The standings only ever mean
+# the regular season; the knockout stages are results, not a table.
+PHASES = {"RS": "Regular season", "PI": "Play-in", "PO": "Playoffs", "FF": "Final Four"}
+
+
 def games(conn, source: str, season_code: str, *, round_: int | None = None,
-          club: str | None = None, limit: int = 50, offset: int = 0) -> list[dict]:
+          club: str | None = None, phase: str | None = None,
+          limit: int = 50, offset: int = 0) -> list[dict]:
     where = ["source=?", "season_code=?", "is_final=1"]
     params: list = [source, season_code]
     if round_ is not None:
         where.append("round=?")
         params.append(round_)
+    if phase:
+        # Bound as a parameter, and the router types it as an enum, so an
+        # unknown phase is a 422 before it ever reaches SQL.
+        where.append("phase_type_code=?")
+        params.append(phase)
     if club:
         where.append("(home_club_code=? OR away_club_code=?)")
         params += [club, club]

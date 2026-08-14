@@ -352,6 +352,9 @@ export interface FoulsDrawnIndex {
   }>;
 }
 
+/** Competition stage. Standings are the regular season; the rest are results. */
+export type Phase = 'RS' | 'PI' | 'PO' | 'FF';
+
 export type PlayerSort =
   | 'pir_avg'
   | 'pir_total'
@@ -412,8 +415,14 @@ export const api = {
   seasons: () => get<Season[]>('/seasons'),
   clubs: (season?: string) => get<Club[]>('/clubs', { season }),
   standings: (season?: string) => get<StandingsRow[]>('/standings', { season }),
-  games: (p: { season?: string; round?: number; club?: string; limit?: number; offset?: number }) =>
-    get<GameSummary[]>('/games', p),
+  games: (p: {
+    season?: string;
+    round?: number;
+    club?: string;
+    phase?: Phase;
+    limit?: number;
+    offset?: number;
+  }) => get<GameSummary[]>('/games', p),
   game: (code: number, season?: string) => get<GameDetail>(`/games/${code}`, { season }),
   timeline: (code: number, season?: string) =>
     get<GameTimeline>(`/games/${code}/timeline`, { season }),
