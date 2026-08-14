@@ -3,7 +3,7 @@ api:
     repository: ghcr.io/sstathatos/elcourtside-api
     # pinned by CI on every build — do not edit by hand; the git history of
     # this line is the deploy history
-    tag: "0f959bc18534992df7589d8adcc9b296d5be094c"
+    tag: "be6972042f8c96876f5e9890a0835352baf231c9"
     pullPolicy: IfNotPresent
   # Always 1. SQLite is single-writer and the PVC is a node-local volume, so a
   # second replica could neither mount it elsewhere nor write safely.
@@ -22,7 +22,7 @@ api:
 web:
   image:
     repository: ghcr.io/sstathatos/elcourtside-web
-    tag: "0f959bc18534992df7589d8adcc9b296d5be094c"
+    tag: "be6972042f8c96876f5e9890a0835352baf231c9"
     pullPolicy: IfNotPresent
   replicaCount: 2
   containerPort: 8080
