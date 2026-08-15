@@ -1,11 +1,3 @@
-# Test image for the web app — vitest plus the TypeScript/Astro check.
-#
-# The production image throws the toolchain away in its second stage; this one
-# keeps it, because that toolchain *is* the test runner. BuildKit reads the
-# ignore file beside this Dockerfile (Dockerfile.test.dockerignore).
-#
-#   docker compose --profile test run --rm web-test
-
 FROM node:22-alpine
 
 WORKDIR /app
@@ -13,6 +5,4 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY . ./
 
-# `astro check` first: a type error explains a failing test more clearly than
-# the test failure does, and it is the faster of the two.
 CMD ["sh", "-c", "npx astro check && npm run test"]

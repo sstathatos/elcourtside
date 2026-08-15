@@ -5,8 +5,6 @@ metadata:
   labels:
     {{- include "elcourtside.labels" . | nindent 4 }}
   annotations:
-    # Survives `helm uninstall`: the database is expensive to rebuild (~8 h of
-    # polite API calls), so losing it to a mistyped command is not acceptable.
     helm.sh/resource-policy: keep
 spec:
   accessModes: ["ReadWriteOnce"]

@@ -21,10 +21,6 @@ spec:
     - host: {{ .Values.ingress.host }}
       http:
         paths:
-          # /api first: with Prefix matching, nginx-ingress takes the longest
-          # match, but the ordering is kept explicit so the intent survives an
-          # edit. Every API route — including /api/docs — is under this
-          # prefix, so no rewrite is needed and no second rule is required.
           - path: /api
             pathType: Prefix
             backend:

@@ -1,40 +1,12 @@
-# Local stack: the two images as they are actually deployed.
-#
-# This is a verification aid, not a deployment artifact — production is the
-# Helm chart. What it buys over `uvicorn` + `astro dev` is the arrangement:
-# static files behind nginx with /api same-origin, exactly the shape the
-# Ingress produces, so a path or caching problem shows up here rather than in
-# the cluster.
-#
-#   docker compose up --build          API + web on http://localhost:8080
-#   docker compose run --rm ingest     one ETL pass into the same database
-#   docker compose run --rm metrics    recompute from what is already stored
-#   docker compose --profile test run --rm api-test    pytest
-#   docker compose --profile test run --rm web-test    astro check + vitest
-#
-# Every service sets `user: "0:0"`. That is a rootless-Docker accommodation for
-# the bind mount, not a security choice: under rootless, container UID 0 maps
-# to *your* host UID, while the image's non-root UID 1000 maps to a
-# subordinate UID (100999) that does not own ./api/data. Without it the
-# writers fail outright, and the API fails too as soon as a job checkpoints
-# the WAL away — a read-only SQLite connection has to recreate the -shm file,
-# which is still a write. The images themselves default to non-root, which is
-# what the cluster's runAsNonRoot requires; there a PVC with fsGroup gives all
-# three the same ownership instead.
-
 services:
   api:
     build: ./api
     user: "0:0"
     environment:
-      # Same file the CLIs default to, so all three agree.
       ELCOURTSIDE_DB: /data/elcourtside.db
-      # nginx is same-origin here, so CORS is only a safety net.
       ELCOURTSIDE_CORS_ORIGINS: http://localhost:8080
     volumes:
       - ./api/data:/data
-    # Published so /docs and /metrics are reachable directly; the web
-    # container reaches the API over the compose network, not this port.
     ports:
       - "8000:8000"
     healthcheck:
@@ -49,7 +21,6 @@ services:
   web:
     build: ./web
     volumes:
-      # The compose-only config, which proxies /api in place of the Ingress.
       - ./web/nginx.local.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
       - "8080:8080"
@@ -58,8 +29,6 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Run on demand, not part of `up`: the ETL is a CronJob in the cluster and
-  # is deliberately polite to the Euroleague API (~1 req / 2 s).
   ingest:
     build: ./api
     profiles: ["jobs"]
@@ -80,14 +49,6 @@ services:
       - ./api/data:/data
     command: ["python", "-m", "metrics"]
 
-  # --- tests -----------------------------------------------------------------
-  # Their own images: the runtime images deliberately carry neither the test
-  # files nor the dev dependencies. Each test Dockerfile has its own
-  # .dockerignore beside it, so the test and production build contexts can
-  # differ without one quietly changing the other.
-  #
-  # No volumes and no database: the suites build what they need from fixtures,
-  # which is what makes them safe to run while the stack is up.
   api-test:
     build:
       context: ./api

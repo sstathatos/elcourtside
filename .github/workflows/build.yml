@@ -18,9 +18,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Gate: nothing is built or published until both suites pass. They run from
-  # the same test images used locally (`docker compose --profile test`), so a
-  # green CI and a green laptop mean the same thing.
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -48,8 +45,6 @@ jobs:
       - name: Run the ${{ matrix.name }} suite
         run: docker run --rm elcourtside-${{ matrix.name }}-test:ci
 
-  # The chart is not published, but a broken template should fail here rather
-  # than in ArgoCD.
   chart:
     runs-on: ubuntu-latest
     steps:
@@ -82,8 +77,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Built locally first — the image is only pushed after the scan passes,
-      # so a vulnerable image never exists in the registry at all.
       - name: Build ${{ matrix.name }}
         uses: docker/build-push-action@v6
         with:
@@ -97,8 +90,6 @@ jobs:
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ghcr.io/${{ github.repository }}-${{ matrix.name }}:${{ github.sha }}
-          # CRITICAL blocks; HIGH is reported below but non-blocking, because
-          # base images routinely carry transient HIGH CVEs with no fix yet.
           severity: CRITICAL
           exit-code: "1"
           ignore-unfixed: true
@@ -110,8 +101,6 @@ jobs:
           severity: HIGH
           exit-code: "0"
 
-      # Instant re-run from cache; :latest kept as a convenience alias, but
-      # the chart always pins the SHA.
       - name: Push ${{ matrix.name }}
         uses: docker/build-push-action@v6
         with:
@@ -122,10 +111,6 @@ jobs:
             ghcr.io/${{ github.repository }}-${{ matrix.name }}:latest
           cache-from: type=gha,scope=${{ matrix.name }}
 
-  # GitOps hand-off: pin the new tags in the Helm values and commit. ArgoCD
-  # sees the change and performs the rollout — CI never touches the cluster.
-  # No trigger loop: helm/** is outside this workflow's paths filter, and the
-  # commit is marked [skip ci] as a second guard.
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -141,9 +126,6 @@ jobs:
           path = pathlib.Path("helm/elcourtside/values.yaml")
           lines = path.read_text().splitlines()
 
-          # Both images have an identically indented `tag:` line, so the edit
-          # is scoped by which top-level block we are inside — a bare
-          # `sed s/tag:/` would rewrite whichever it hit first, or both.
           section = None
           changed = 0
           for i, line in enumerate(lines):

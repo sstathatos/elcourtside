@@ -1,7 +1,4 @@
 {{- if .Values.serviceMonitor.enabled }}
-# The cluster's kube-prometheus-stack runs with
-# serviceMonitorSelectorNilUsesHelmValues=false, so it picks this up from any
-# namespace without extra labels.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -13,10 +10,6 @@ spec:
     matchLabels:
       {{- include "elcourtside.componentLabels" (dict "Release" .Release "component" "api") | nindent 6 }}
   endpoints:
-    # Scrapes the pod directly, which is why /metrics is not on the Ingress.
-    # Alongside request rate/latency, the API exports elcourtside_* gauges
-    # read from the database — CronJob pods are too short-lived to scrape, so
-    # the always-on API reports the pipeline's health on its behalf.
     - port: http
       path: /metrics
       interval: {{ .Values.serviceMonitor.interval }}

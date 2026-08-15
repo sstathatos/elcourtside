@@ -14,8 +14,6 @@ spec:
       labels:
         {{- include "elcourtside.componentLabels" (dict "Release" .Release "component" "web") | nindent 8 }}
     spec:
-      # Static files with no state, so unlike the API this one spreads across
-      # nodes and rolls normally.
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -27,8 +25,6 @@ spec:
                 topologyKey: kubernetes.io/hostname
       securityContext:
         runAsNonRoot: true
-        # The nginx-unprivileged image's own UID; it listens on 8080 rather
-        # than a privileged port precisely so it can run as this user.
         runAsUser: 101
         runAsGroup: 101
       containers:
@@ -40,8 +36,6 @@ spec:
               containerPort: {{ .Values.web.containerPort }}
           securityContext:
             allowPrivilegeEscalation: false
-            # nginx writes its pid and caches under /tmp in this image, so the
-            # root filesystem can stay read-only.
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]

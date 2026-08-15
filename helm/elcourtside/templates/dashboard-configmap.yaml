@@ -1,7 +1,4 @@
 {{- if .Values.dashboard.enabled }}
-# The cluster's Grafana runs a sidecar watching every namespace for this
-# label, so shipping the dashboard with the app means it arrives and leaves
-# with the release rather than being clicked into Grafana by hand.
 apiVersion: v1
 kind: ConfigMap
 metadata:

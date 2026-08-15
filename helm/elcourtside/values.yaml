@@ -1,16 +1,9 @@
 api:
   image:
     repository: ghcr.io/sstathatos/elcourtside-api
-    # pinned by CI on every build — do not edit by hand; the git history of
-    # this line is the deploy history
     tag: "be6972042f8c96876f5e9890a0835352baf231c9"
     pullPolicy: IfNotPresent
-  # Always 1. SQLite is single-writer and the PVC is a node-local volume, so a
-  # second replica could neither mount it elsewhere nor write safely.
   containerPort: 8000
-  # Scratch space for the backup endpoint's `VACUUM INTO` snapshot, which is
-  # written whole before it is streamed — so this must exceed the database
-  # size (~1 GB at full history).
   tmpSize: 2Gi
   resources:
     requests:
@@ -34,42 +27,24 @@ web:
       memory: 64Mi
 
 persistence:
-  # k3s ships local-path; kind's default class is also local-path under the
-  # name "standard". Empty means "cluster default".
   storageClass: "local-path"
-  # local-path does not enforce quota — this number is documentation of the
-  # expected full-history size (~1 GB) with headroom.
   size: 5Gi
   backupSize: 5Gi
 
 ingest:
-  # Nightly, after the last European tip-off has finished.
   schedule: "0 3 * * *"
-  # `latest` in the cluster too: the one-time full backfill is run by hand as
-  # a Job, not on a schedule.
   seasons: latest
-  # A backfill can run for hours; a nightly incremental is minutes.
   activeDeadlineSeconds: 43200
 
-# The manual "run it now" job: a suspended CronJob used as a template, so an
-# on-demand run inherits the real pod spec rather than being hand-written.
-#   kubectl -n elcourtside create job --from=cronjob/elcourtside-backfill now
 backfill:
   enabled: true
-  # Every season the source has, unlike the nightly job's `latest`.
   seasons: all
-  # ~8 h at the polite request rate; the ceiling is generous on purpose.
   activeDeadlineSeconds: 43200
 
 backup:
   enabled: true
   schedule: "30 4 * * *"
-  # Placement is handled by anti-affinity against the API pod (see the
-  # CronJob template), which cannot go stale the way a hostname does. This is
-  # only for extra constraints — e.g. keeping backups off a particular node.
   nodeSelector: {}
-  # Needed if the only node satisfying the anti-affinity is tainted, as on the
-  # local kind cluster where the other node is the control plane.
   tolerations: []
   retention: 7
   image:
@@ -89,5 +64,4 @@ serviceMonitor:
   interval: 30s
 
 dashboard:
-  # Picked up by the cluster's Grafana sidecar, which watches all namespaces.
   enabled: true
