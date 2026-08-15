@@ -1,9 +1,4 @@
-"""Players: PIR / +/- / clutch leaderboards and per-player detail.
-
-`sort` is an enum, not a string: the value has to reach ORDER BY, where SQLite
-cannot bind a parameter, so the set of legal columns is fixed at the type level
-and FastAPI rejects anything else with 422 before any SQL is built.
-"""
+"""Players: PIR / +/- / clutch leaderboards and per-player detail."""
 
 from __future__ import annotations
 

@@ -52,12 +52,7 @@ def get_timeline(request: Request, response: Response,
                  game_code: int = Path(ge=1),
                  season: str | None = Query(None),
                  conn: sqlite3.Connection = Depends(get_conn)):
-    """Score curve for the game chart.
-
-    Rebuilt from pbp_events per request (see queries.game_timeline) rather than
-    read from a table — the only computed endpoint today, and the pattern any
-    future live-game endpoint will follow.
-    """
+    """Score curve for the game chart."""
     season = resolve_season(conn, season)
 
     def produce():

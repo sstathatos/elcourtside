@@ -1,5 +1,4 @@
-"""Largest lead per club, and blown leads (max lead held by the eventual
-loser). A tie game has no leader; lead is measured after every score."""
+"""Largest lead per club, and blown leads (max lead held by the eventual loser)."""
 
 from __future__ import annotations
 

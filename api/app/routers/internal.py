@@ -1,11 +1,4 @@
-"""Cluster-internal endpoints. Never routed through the public ingress.
-
-`/internal/backup.sqlite` exists because the DB lives on a node-local PVC: a
-backup pod scheduled on the *other* node cannot mount that volume, so it pulls
-a snapshot over HTTP instead. `VACUUM INTO` writes a consistent copy even while
-the ingest CronJob is mid-transaction — copying the file (and its WAL) by hand
-could capture a torn state.
-"""
+"""Cluster-internal endpoints."""
 
 from __future__ import annotations
 
@@ -28,12 +21,7 @@ TOKEN_ENV = "ELCOURTSIDE_INTERNAL_TOKEN"
 
 
 def _authorize(request: Request) -> None:
-    """Token when one is configured; otherwise private-network callers only.
-
-    In the cluster the backup CronJob holds the token from a Secret. Locally
-    the env var is unset and loopback calls just work, which keeps development
-    friction at zero without opening anything up in prod.
-    """
+    """Token when one is configured; otherwise private-network callers only."""
     token = os.environ.get(TOKEN_ENV)
     if token:
         if request.headers.get("x-internal-token") != token:

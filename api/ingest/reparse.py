@@ -1,12 +1,4 @@
-"""Re-parse stored raw payloads into the parsed tables — zero network.
-
-This is the raw-first design paying off: when a parser bug is fixed, the
-parsed rows are re-derived from the exact bytes the API served originally
-(raw_payloads), never by re-fetching. Run via: python -m ingest --reparse
-
-Currently euroleague-specific (the only source); grows a dispatch table
-when a second source lands.
-"""
+"""Re-parse stored raw payloads into the parsed tables — zero network."""
 
 from __future__ import annotations
 
@@ -35,8 +27,7 @@ def _items(doc: object) -> list[dict]:
 
 
 def reparse_registries(conn, source: str, season_codes: list[str]) -> dict[str, int]:
-    """Re-derive the club and people registries — including image URLs, which
-    older ingests parsed past — from stored payloads. No network."""
+    """Re-derive the club and people registries — including image URLs, which older ingests parsed past — from stored payloads."""
     counts = {"clubs": 0, "people": 0}
     for season in season_codes:
         rows = conn.execute(

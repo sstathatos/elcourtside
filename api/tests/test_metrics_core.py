@@ -1,5 +1,4 @@
-"""Unit tests for plusminus, clutch, runs, leads, pir, possessions, standings
-on small hand-computed scenarios."""
+"""Unit tests for plusminus, clutch, runs, leads, pir, possessions, standings on small hand-computed scenarios."""
 
 import pytest
 
@@ -43,7 +42,6 @@ def test_plus_minus_hand_computed():
 
 
 def test_clutch_window_and_margin():
-    # clutch window opens at abs 2100 (Q4 05:00); margin escapes 5 mid-window
     tl = build_timeline([
         ev(3, 1, "2FGM", "H", "h1", marker="00:30", a=50, b=50),  # 50-50 heading to Q4
         ev(4, 2, "2FGM", "H", "h1", marker="04:00", a=52, b=50),  # before: tied → clutch
@@ -56,8 +54,6 @@ def test_clutch_window_and_margin():
     assert st.player_points["h1"] == 2 + 2          # 04:00 and 02:00 baskets
     assert st.player_points["h2"] == 3
     assert st.home_pts_for == 7 and st.away_pts_for == 0
-    # clutch seconds: [2100,2160) margin 0 + [2160,2220) margin 2 +
-    # [2220,2280) margin 5 = 180 s; margins 7 and 9 after that are excluded
     assert st.player_seconds["h1"] == pytest.approx(180.0)
     assert st.game_seconds == pytest.approx(180.0)
 
@@ -104,7 +100,6 @@ def test_possessions_formula():
     total = {"fg2a": 40, "fg3a": 25, "fta": 20, "reb_off": 10, "turnovers": 12}
     poss = team_possessions(total)
     assert poss == pytest.approx(40 + 25 + 0.44 * 20 - 10 + 12)
-    # player on court half the game sees half the possessions
     assert player_poss_share(poss, 1200.0, 2400.0) == pytest.approx(poss / 2)
     assert player_poss_share(poss, None, 2400.0) == 0.0
     assert per_100(5, 0) is None
@@ -117,8 +112,6 @@ def _g(h, a, hs, as_):
 
 
 def test_standings_tiebreak_head_to_head():
-    # X and Y both 2-1; Y beat X head-to-head → Y ranks above X despite
-    # X's better overall point diff. Z 1-2, W 1-2, Z beat W.
     games = [
         _g("X", "W", 100, 60),   # X huge diff
         _g("Y", "X", 80, 78),    # h2h: Y > X

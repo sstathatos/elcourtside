@@ -48,7 +48,6 @@ def test_score_carry_forward_and_null_means_unchanged():
 
 
 def test_side_inference_when_a_is_away():
-    # away club's baskets increment points_a → A is the away side
     tl = build_timeline([
         ev(1, 1, "2FGM", "AWAY", "p1", marker="09:00", a=2),
         ev(1, 2, "2FGM", "HOME", "p2", marker="08:00", a=2, b=2),

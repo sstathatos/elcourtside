@@ -1,9 +1,4 @@
-"""Common source interface.
-
-A source turns remote APIs into (a) raw payload pages to archive and
-(b) parsed rows shaped exactly like the DB tables in ingest/db.py.
-The pipeline never sees source-specific JSON.
-"""
+"""Common source interface."""
 
 from __future__ import annotations
 
@@ -16,18 +11,12 @@ class FetchedList:
     """Result of a list endpoint (seasons, games, people); may span pages."""
     raw_pages: list[tuple[str, bytes]] = field(default_factory=list)  # (raw key, body)
     rows: list[dict] = field(default_factory=list)
-    # Club registry, carried by the schedule payload (both sides of every
-    # game). Empty for list endpoints that say nothing about clubs.
     clubs: list[dict] = field(default_factory=list)
 
 
 @dataclass
 class FetchedGameDetail:
-    """Result of a per-game endpoint (boxscore, play-by-play).
-
-    found=False means the API answered but has no data for this game
-    (e.g. play-by-play before 2007) — recorded as 'missing', not an error.
-    """
+    """Result of a per-game endpoint (boxscore, play-by-play)."""
     raw: bytes | None = None
     rows: list[dict] = field(default_factory=list)
     found: bool = False

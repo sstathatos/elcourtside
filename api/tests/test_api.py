@@ -1,8 +1,4 @@
-"""API tests — the real game-1 fixtures ingested, computed, then served.
-
-Same DB recipe as test_engine.py, so what the endpoints return is the actual
-output of the metrics engine rather than hand-written rows.
-"""
+"""API tests — the real game-1 fixtures ingested, computed, then served."""
 
 import sqlite3
 
@@ -31,7 +27,6 @@ def _clear_cache():
 
 @pytest.fixture
 def api_conn():
-    # shared with the TestClient's server thread, hence check_same_thread=False
     conn = db.connect(":memory:", check_same_thread=False)
     ensure_schema(conn)
     db.upsert_seasons(conn, SRC, [{
@@ -53,7 +48,6 @@ def api_conn():
                               parse_boxscore(load_fixture("game1_stats.json"), "IST", "TEL"))
     pbp_rows, _live = parse_pbp(load_fixture("game1_pbp.json"))
     db.replace_pbp_events(conn, SRC, SEASON, 1, pbp_rows)
-    # TEL deliberately has no crest: the null path has to survive the API.
     db.upsert_clubs(conn, SRC, SEASON, [
         {"club_code": "IST", "club_name": "Anadolu Efes Istanbul",
          "crest_url": "https://cdn.example/ist.png"},
@@ -129,7 +123,6 @@ def test_game_detail_and_timeline(client):
     tl = client.get("/api/games/1/timeline").json()
     assert tl["has_pbp"] is True
     assert (tl["home_final"], tl["away_final"]) == (85, 78)
-    # a score curve is monotonic in both series and ends at the final score
     assert tl["points"][-1]["home"] == 85 and tl["points"][-1]["away"] == 78
     assert all(b["home"] >= a["home"] and b["away"] >= a["away"]
                for a, b in zip(tl["points"], tl["points"][1:]))
@@ -155,7 +148,6 @@ def test_sort_whitelist_rejects_injection(client):
     r = client.get("/api/players?sort=pir_avg;DROP TABLE games")
     assert r.status_code == 422
     assert client.get("/api/players?limit=100000").status_code == 422
-    # the table is obviously still there
     assert client.get("/api/games").status_code == 200
 
 
@@ -208,19 +200,15 @@ def test_backup_streams_a_valid_database(client, tmp_path):
 
 def test_backup_refuses_external_callers(api_conn):
     app.dependency_overrides[get_conn] = lambda: api_conn
-    # a genuinely public address — Python counts the TEST-NET ranges as private
     with TestClient(app, client=("8.8.8.8", 5000)) as external:
         assert external.get("/internal/backup.sqlite").status_code == 403
     app.dependency_overrides.clear()
 
 
-# --- crests and portraits ----------------------------------------------------
-
 def test_clubs_endpoint_carries_crests_and_tolerates_missing_ones(client):
     rows = {c["club_code"]: c for c in client.get("/api/clubs").json()}
     assert rows["IST"]["crest_url"] == "https://cdn.example/ist.png"
     assert rows["IST"]["club_name"] == "Anadolu Efes Istanbul"
-    # a club the registry has no crest for still appears, just without an image
     assert rows["TEL"]["crest_url"] is None
 
 
@@ -242,9 +230,6 @@ def test_player_without_a_registry_photo_reports_null(client, player_code):
 
 def test_players_list_carries_headshots_without_duplicating_rows(
         client, api_conn, player_code):
-    # a transferred player has one `people` row per club — the list must still
-    # return exactly one row for them (the reason the query uses a subquery
-    # rather than a JOIN)
     db.upsert_people(api_conn, SRC, SEASON, [
         _person(player_code, "IST", "https://cdn.example/p.png"),
         _person(player_code, "TEL", "https://cdn.example/p.png"),
@@ -258,7 +243,6 @@ def test_players_list_carries_headshots_without_duplicating_rows(
 
 
 def test_team_roster_lists_the_registered_squad(client, api_conn):
-    # 7 has no metrics row: a signing who has not played yet must still appear
     db.upsert_people(api_conn, SRC, SEASON, [
         {**_person("111111", "IST", None), "name": "SUB, TEN", "dorsal": "10"},
         {**_person("222222", "IST", None), "name": "SUB, TWO", "dorsal": "2"},
@@ -268,7 +252,6 @@ def test_team_roster_lists_the_registered_squad(client, api_conn):
     cache.clear()
     roster = client.get("/api/teams/IST").json()["roster"]
     names = [r["player_name"] for r in roster]
-    # only this club's players, shirt numbers ordered numerically not as text
     assert "OTHER, CLUB" not in names
     assert [r["dorsal"] for r in roster if r["dorsal"] in {"2", "10"}] == ["2", "10"]
     unplayed = next(r for r in roster if r["player_name"] == "SUB, TEN")
@@ -277,21 +260,16 @@ def test_team_roster_lists_the_registered_squad(client, api_conn):
 
 def test_response_shape_version_changes_the_etag(client, monkeypatch):
     before = client.get("/api/teams/IST").headers["etag"]
-    # a shape change with no recompute must still retire cached copies,
-    # otherwise browsers revalidate into a 304 and keep the old body forever
     monkeypatch.setattr(cache, "SCHEMA_VERSION", "test-next")
     cache.clear()
     after = client.get("/api/teams/IST").headers["etag"]
     assert before != after
 
 
-# --- radar -------------------------------------------------------------------
-
 def test_percentile_uses_the_midpoint_rule_for_ties():
     from app.queries import _percentile
     assert _percentile([1, 2, 3, 4], 5) == 100.0
     assert _percentile([1, 2, 3, 4], 0) == 0.0
-    # an all-level field lands mid-scale, not at an extreme
     assert _percentile([7, 7, 7], 7) == 50.0
     assert _percentile([], 3) == 0.0
 
@@ -301,24 +279,16 @@ def test_team_radar_ranks_against_the_league(client):
     lost = client.get("/api/teams/TEL").json()["radar"]
     assert [a["key"] for a in won]
     assert all(0 <= a["percentile"] <= 100 for a in won)
-    # a club is ranked inside its own league, so the leader of a two-club field
-    # sits at 75 (midpoint rule), not 100 — what matters is the ordering.
-    # IST won 85-78, so it scored more per possession than TEL.
     ist = next(a for a in won if a["key"] == "ortg")
     tel = next(a for a in lost if a["key"] == "ortg")
     assert ist["percentile"] > tel["percentile"]
     assert ist["value"] > tel["value"]
-    # the defensive axes are flagged as inverted so the radar reads correctly
     assert next(a for a in won if a["key"] == "drtg")["lower_is_better"] is True
 
 
 def test_player_radar_needs_a_real_sample(client, player_code):
-    # the fixture has a single game, well under the games threshold, so a
-    # per-36 rate would be noise and the radar is withheld rather than invented
     assert client.get(f"/api/players/{player_code}").json()["radar"] == []
 
-
-# --- 12-axis skill radar -----------------------------------------------------
 
 def test_radar_flips_percentiles_where_lower_is_better():
     from app.queries import _radar
@@ -327,27 +297,22 @@ def test_radar_flips_percentiles_where_lower_is_better():
     field = [{"tov100": 1.0, "pts36": 10.0},
              {"tov100": 2.0, "pts36": 20.0},
              {"tov100": 3.0, "pts36": 30.0}]
-    # fewest turnovers in the field must rank top, most must rank bottom
     best = {a["key"]: a for a in _radar(field, field[0], axes)}
     worst = {a["key"]: a for a in _radar(field, field[2], axes)}
     assert best["tov"]["percentile"] > worst["tov"]["percentile"]
     assert best["tov"]["lower_is_better"] is True
-    # a normal axis is untouched: most points ranks top
     assert best["pts"]["percentile"] < worst["pts"]["percentile"]
     assert worst["pts"]["lower_is_better"] is False
 
 
 def test_derived_shooting_metrics():
     from app.queries import _derived
-    # 10 pts on 4 FGA (2 of them threes) and 2 FTA:
-    #   TS% = 100 * 10 / (2 * (4 + 0.44*2)) = 1000 / 9.76 = 102.46
     row = {"points": 10, "seconds": 2160.0, "poss_share": 50.0,
            "fg2a": 2, "fg3m": 1, "fg3a": 2, "fta": 2, "turnovers": 5}
     d = _derived(row)
     assert round(d["ts_pct"], 2) == 102.46
     assert d["pts36"] == 10.0                       # exactly 36 minutes played
     assert d["tov100"] == 10.0                      # 5 per 50 possessions
-    # 2 three-point attempts is far below the threshold, so no percentage
     assert d["fg3_pct"] is None
 
 
@@ -363,7 +328,6 @@ def test_derived_guards_thin_samples_and_missing_defence():
 
 
 def test_player_radar_has_twelve_axes_with_real_data(client, api_conn, player_code):
-    # the fixture is one game, below the games threshold — so relax it
     import app.queries as q
     original = q.RADAR_MIN_GAMES
     q.RADAR_MIN_GAMES = 1
@@ -373,7 +337,6 @@ def test_player_radar_has_twelve_axes_with_real_data(client, api_conn, player_co
     finally:
         q.RADAR_MIN_GAMES = original
     keys = [a["key"] for a in radar]
-    # every axis present is one we declared, and the inverted ones are flagged
     assert set(keys) <= {k for k, _, _, _ in q.PLAYER_RADAR}
     assert all(0 <= a["percentile"] <= 100 for a in radar)
     inverted = {a["key"] for a in radar if a.get("lower_is_better")}
@@ -381,8 +344,7 @@ def test_player_radar_has_twelve_axes_with_real_data(client, api_conn, player_co
 
 
 def test_player_page_survives_a_database_without_radar_columns(client, api_conn, player_code):
-    """A deploy ships the image before the metrics job adds new columns, so the
-    API must serve an older database — losing the chart, not the page."""
+    """A deploy ships the image before the metrics job adds new columns, so the API must serve an older database — losing the chart, not the page."""
     api_conn.executescript(
         "ALTER TABLE player_season_metrics DROP COLUMN reb_off;"
         "ALTER TABLE team_season_metrics ADD COLUMN _unused INTEGER;"

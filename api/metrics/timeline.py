@@ -1,14 +1,4 @@
-"""PBP rows → absolute-time event stream with running home/away score.
-
-Clock model: MARKERTIME counts down within a period; Q1-4 are 600 s,
-each OT 300 s. All extra time is stored as quarter=5 — the OT number is
-derived from MINUTE (41-45 → OT1, 46-50 → OT2, ...). Absolute time is
-seconds since tip-off; clamped monotonic to survive clock glitches.
-
-Score model: points_a/points_b are cumulative and null means "unchanged".
-Which side is "A" is not stored — it is inferred by matching scoring events'
-team_code against the club that the increment favors (majority vote).
-"""
+"""PBP rows → absolute-time event stream with running home/away score."""
 
 from __future__ import annotations
 
@@ -78,7 +68,6 @@ def _period_bounds(quarter: int, ot: int) -> tuple[float, float]:
 def build_timeline(rows: list[dict], home_club: str, away_club: str) -> Timeline:
     rows = sorted(rows, key=lambda r: (r["quarter"], r["play_number"]))
 
-    # pass 1: absolute time, OT numbers, cumulative A/B score, side votes
     staged = []
     cur_a = cur_b = 0
     last_abs = 0.0

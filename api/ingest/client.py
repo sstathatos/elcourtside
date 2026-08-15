@@ -1,9 +1,4 @@
-"""Polite HTTP client: global rate limit, retries with backoff, JSON parsing.
-
-The Euroleague API is unauthenticated and free — we pace *all* requests at
-one per `min_interval` seconds (default 2.0, see doc/plan.md) measured
-between request starts, across retries too.
-"""
+"""Polite HTTP client: global rate limit, retries with backoff, JSON parsing."""
 
 from __future__ import annotations
 
@@ -50,12 +45,7 @@ class PoliteClient:
         self._next_at = self._clock() + self.min_interval
 
     def get_json(self, url: str, params: dict | None = None) -> tuple[bytes, Any]:
-        """GET url and return (raw_body, parsed_json_or_None).
-
-        Returns parsed=None when the body is empty or not valid JSON — the
-        caller decides whether that means "missing" (e.g. pre-2007 PBP).
-        Raises NotFoundError on 404, ApiError on other failures.
-        """
+        """GET url and return (raw_body, parsed_json_or_None)."""
         last_error: Exception | None = None
         for attempt in range(self.max_attempts):
             if attempt:

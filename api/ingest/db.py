@@ -1,16 +1,4 @@
-"""SQLite schema and storage helpers for the ingest pipeline.
-
-Raw-first design: every API payload is stored zlib-compressed in
-`raw_payloads` keyed by (source, kind, key), alongside the parsed tables.
-A metrics bug or a new metric never requires re-hitting the API.
-
-Idempotency model:
-- seasons / games / people rows are upserted; re-ingesting is a no-op update.
-- boxscore_lines / pbp_events are replaced per game inside a transaction
-  (delete + insert), so re-fetching a game can never leave stale rows.
-- games carries ingest bookkeeping (boxscore_status, pbp_status, is_final)
-  that the schedule upsert never touches.
-"""
+"""SQLite schema and storage helpers for the ingest pipeline."""
 
 from __future__ import annotations
 
@@ -65,7 +53,6 @@ CREATE TABLE IF NOT EXISTS games (
   away_partials    TEXT,
   winner_club_code TEXT,
   audience         INTEGER,
-  -- ingest bookkeeping (never touched by the schedule upsert)
   boxscore_status  TEXT NOT NULL DEFAULT 'pending',  -- pending | ok | missing
   pbp_status       TEXT NOT NULL DEFAULT 'pending',  -- pending | ok | missing
   is_final         INTEGER NOT NULL DEFAULT 0,
@@ -144,16 +131,11 @@ CREATE TABLE IF NOT EXISTS people (
   country_code  TEXT,
   start_date    TEXT,
   end_date      TEXT,
-  -- Portrait URLs on the Euroleague CDN. Players only: every coach and staff
-  -- entry the API returns has an empty `images` object.
   headshot_url  TEXT,
   action_url    TEXT,
   PRIMARY KEY (source, season_code, person_code, club_code, type_code)
 );
 
--- Club registry per season: name and crest URL, which the schedule payload
--- carries on both sides of every game. Kept separate from `standings` so a
--- club is known even before it has played.
 CREATE TABLE IF NOT EXISTS clubs (
   source      TEXT NOT NULL,
   season_code TEXT NOT NULL,
@@ -181,9 +163,6 @@ CREATE TABLE IF NOT EXISTS ingest_runs (
 """
 
 
-# Columns added to tables that predate them. `CREATE TABLE IF NOT EXISTS` is a
-# no-op on an existing table, so new columns have to be ALTERed in; SQLite has
-# no `ADD COLUMN IF NOT EXISTS`, hence the pragma check.
 _ADDED_COLUMNS = {
     "people": [("headshot_url", "TEXT"), ("action_url", "TEXT")],
 }
@@ -198,8 +177,6 @@ def migrate(conn: sqlite3.Connection) -> None:
 
 
 def connect(path: str, check_same_thread: bool = True) -> sqlite3.Connection:
-    # check_same_thread=False is for the API tests, where one in-memory
-    # database is shared with the TestClient's server thread.
     conn = sqlite3.connect(path, check_same_thread=check_same_thread)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode = WAL")
@@ -208,8 +185,6 @@ def connect(path: str, check_same_thread: bool = True) -> sqlite3.Connection:
     migrate(conn)
     return conn
 
-
-# -- raw payloads -------------------------------------------------------------
 
 def store_raw(conn, source: str, kind: str, key: str, payload: bytes, fetched_at: str) -> None:
     conn.execute(
@@ -226,8 +201,6 @@ def load_raw(conn, source: str, kind: str, key: str) -> bytes | None:
     ).fetchone()
     return zlib.decompress(row["payload"]) if row else None
 
-
-# -- upserts ------------------------------------------------------------------
 
 def upsert_seasons(conn, source: str, rows: Iterable[dict]) -> None:
     conn.executemany(
@@ -339,8 +312,6 @@ def upsert_clubs(conn, source: str, season_code: str, rows: Iterable[dict]) -> N
         [{**r, "source": source, "season_code": season_code} for r in rows],
     )
 
-
-# -- meta / runs --------------------------------------------------------------
 
 def meta_get(conn, key: str) -> str | None:
     row = conn.execute("SELECT value FROM ingest_meta WHERE key=?", (key,)).fetchone()

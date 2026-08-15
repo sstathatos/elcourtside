@@ -1,12 +1,4 @@
-"""Derived metrics tables — same SQLite file as ingest, own DDL block.
-
-Phase 1 tables (games, boxscore_lines, pbp_events, people) are read-only
-inputs here. Everything below is recomputed per season (delete+insert), so
-these tables can always be dropped and rebuilt from stored data.
-
-ENGINE_VERSION is stored in metrics_meta at compute time; bump it when a
-formula changes so stale seasons can be detected and recomputed.
-"""
+"""Derived metrics tables — same SQLite file as ingest, own DDL block."""
 
 ENGINE_VERSION = 3  # + team shooting/rebounding and opponent totals
 
@@ -26,7 +18,6 @@ CREATE TABLE IF NOT EXISTS player_game_metrics (
   clutch_seconds  REAL,
   clutch_points   INTEGER,
   clutch_pm       INTEGER,
-  -- opponent totals while this player was on court; NULL without play-by-play
   opp_fgm         INTEGER,
   opp_fga         INTEGER,
   opp_points      INTEGER,
@@ -78,9 +69,6 @@ CREATE TABLE IF NOT EXISTS player_season_metrics (
   clutch_points     INTEGER,
   clutch_pm         INTEGER,
   fouls_drawn_per100 REAL,   -- per 100 possessions available while on court
-  -- Shooting and rebound splits, summed from the boxscore. Stored raw rather
-  -- than as percentages so rates can be derived without losing the
-  -- denominators — a 1-for-2 night and a 50-for-100 season are both "50%".
   reb_off           INTEGER,
   reb_def           INTEGER,
   fg2m              INTEGER,
@@ -89,8 +77,6 @@ CREATE TABLE IF NOT EXISTS player_season_metrics (
   fg3a              INTEGER,
   ftm               INTEGER,
   fta               INTEGER,
-  -- On-court opponent totals (see metrics/defense.py). NULL for seasons with
-  -- no play-by-play.
   opp_fgm           INTEGER,
   opp_fga           INTEGER,
   opp_points        INTEGER,
@@ -112,9 +98,6 @@ CREATE TABLE IF NOT EXISTS team_season_metrics (
   clutch_pts_for      INTEGER,
   clutch_pts_against  INTEGER,
   clutch_seconds      REAL,
-  -- Season totals for the club and, in the same row, for its opponents.
-  -- Opponent sums are what make defensive rates possible at all: a club's own
-  -- boxscore says nothing about the shooting it allowed.
   points              INTEGER,
   fg2m                INTEGER,
   fg2a                INTEGER,
@@ -165,9 +148,6 @@ CREATE TABLE IF NOT EXISTS metrics_meta (
 """
 
 
-# Columns added after a table first shipped. `CREATE TABLE IF NOT EXISTS` does
-# nothing to an existing table, so new columns have to be ALTERed in — and
-# SQLite has no `ADD COLUMN IF NOT EXISTS`, hence the pragma check.
 _ADDED_COLUMNS = {
     "player_game_metrics": [
         ("opp_fgm", "INTEGER"), ("opp_fga", "INTEGER"), ("opp_points", "INTEGER"),

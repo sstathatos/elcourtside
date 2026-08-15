@@ -1,11 +1,4 @@
-"""Regular-season standings with Euroleague-style tiebreaks.
-
-Ranking: wins. Ties are broken by a mini-league of the games between the
-tied clubs — (1) head-to-head wins, (2) head-to-head point diff — then
-(3) overall point diff, (4) overall points scored. This covers the primary
-official criteria; edge cases deeper in the official rulebook (e.g.
-re-splitting after a partial tie-break) are intentionally not modeled.
-"""
+"""Regular-season standings with Euroleague-style tiebreaks."""
 
 from __future__ import annotations
 

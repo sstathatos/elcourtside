@@ -1,16 +1,4 @@
-"""Ingest orchestration: backfill and nightly incremental are the same code —
-"fetch details for played, non-final games" — only season selection differs.
-
-Season selectors:
-- "latest": newest season that has at least one played game (dev default,
-  also the nightly CronJob's selector — rolls into a new season by itself).
-- "all":    every listed season, oldest first (one-time prod backfill).
-- "E2024,E2025": explicit codes.
-
-A game becomes final once it is played, both details are stored (or recorded
-missing — e.g. pre-2007 PBP), and the PBP is not flagged Live. Final games
-are never re-fetched. Live games stay non-final and are re-fetched next run.
-"""
+"""Ingest orchestration: backfill and nightly incremental are the same code — "fetch details for played, non-final games" — only season selection differs."""
 
 from __future__ import annotations
 

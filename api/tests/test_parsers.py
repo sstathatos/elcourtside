@@ -6,7 +6,6 @@ from ingest.sources import euroleague as el
 
 
 def test_normalize_person_code():
-    # boxscore/people codes: trim only, never stripped
     assert el.normalize_person_code("006590") == "006590"
     assert el.normalize_person_code("  006590 ") == "006590"
     assert el.normalize_person_code("TGB") == "TGB"
@@ -15,7 +14,6 @@ def test_normalize_person_code():
 
 
 def test_normalize_pbp_player_id():
-    # PBP prefixes every person code with 'P' — numeric and legacy alike
     assert el.normalize_pbp_player_id("P007200   ") == "007200"
     assert el.normalize_pbp_player_id("PTGB      ") == "TGB"    # Llull
     assert el.normalize_pbp_player_id("PLCZ") == "LCZ"          # Motiejunas
@@ -50,7 +48,6 @@ def test_parse_games():
 
 def test_parse_boxscore():
     rows = el.parse_boxscore(load_fixture("stats.json"), "IST", "ZAL")
-    # 3 players + team + total per side (trimmed fixture)
     assert len(rows) == 10
     players = [r for r in rows if r["entry_type"] == "player"]
     assert len(players) == 6
@@ -62,7 +59,6 @@ def test_parse_boxscore():
     assert home_total["player_code"] == ""
     assert home_total["points"] > 0
     assert isinstance(home_total["points"], int)
-    # team row = team-attributed stats (e.g. team rebounds), not club identity
     home_team = next(r for r in rows if r["entry_type"] == "team" and r["is_home"] == 1)
     assert home_team["valuation"] == 4
 

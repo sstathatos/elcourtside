@@ -1,11 +1,4 @@
-"""PIR — the official Euroleague Performance Index Rating.
-
-(PTS + REB + AST + STL + BLK + fouls drawn)
-− (missed FG + missed FT + TO + shots blocked + fouls committed)
-
-Computed from our boxscore_lines columns; the API's own `valuation` column
-is kept as ground truth and cross-checked by --validate, never served.
-"""
+"""PIR — the official Euroleague Performance Index Rating."""
 
 from __future__ import annotations
 

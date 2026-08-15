@@ -1,5 +1,4 @@
-"""Data sources. Each source is a module behind the common interface in
-base.py; the pipeline is generic over sources (multi-source future)."""
+"""Data sources."""
 
 from ingest.sources.euroleague import EuroleagueSource
 

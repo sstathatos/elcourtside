@@ -1,5 +1,4 @@
-"""Integration: full real game (E2025 game 1, IST 85-78 TEL) through the
-whole engine, validated against the official boxscore ground truth."""
+"""Integration: full real game (E2025 game 1, IST 85-78 TEL) through the whole engine, validated against the official boxscore ground truth."""
 
 import pytest
 
@@ -48,7 +47,6 @@ def test_engine_full_real_game(game_conn):
     assert summary.games == 1 and summary.pbp_games == 1
     assert summary.score_mismatches == 0
 
-    # PIR must equal the official valuation for every player
     bad = game_conn.execute(
         """SELECT b.player_name, m.pir, b.valuation FROM player_game_metrics m
            JOIN boxscore_lines b ON b.source=m.source AND b.season_code=m.season_code
@@ -57,7 +55,6 @@ def test_engine_full_real_game(game_conn):
            WHERE m.pir != b.valuation""").fetchall()
     assert bad == [], [dict(r) for r in bad]
 
-    # +/- reconstruction must match the official boxscore for every player
     pm = game_conn.execute(
         """SELECT b.player_name, m.pm_computed, b.plus_minus FROM player_game_metrics m
            JOIN boxscore_lines b ON b.source=m.source AND b.season_code=m.season_code
@@ -66,7 +63,6 @@ def test_engine_full_real_game(game_conn):
     mismatches = [dict(r) for r in pm if r["pm_computed"] != r["plus_minus"]]
     assert mismatches == []
 
-    # reconstructed court time within a minute of the boxscore for everyone
     secs = game_conn.execute(
         """SELECT b.player_name, m.seconds_computed, b.seconds_played
            FROM player_game_metrics m
@@ -101,7 +97,6 @@ def test_engine_idempotent(game_conn):
 
 
 def test_engine_boxscore_only_game(game_conn):
-    # simulate the pre-2007 era: no PBP → boxscore metrics only, no crash
     game_conn.execute("UPDATE games SET pbp_status='missing'")
     game_conn.execute("DELETE FROM pbp_events")
     game_conn.commit()

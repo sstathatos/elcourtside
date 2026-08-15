@@ -1,9 +1,4 @@
-"""FastAPI application: routes, /health, and Prometheus /metrics.
-
-Run locally:  .venv/bin/uvicorn app.main:app --reload
-In the cluster the same image runs `python -m ingest` as a CronJob, so the API
-and the pipeline never drift apart.
-"""
+"""FastAPI application: routes, /health, and Prometheus /metrics."""
 
 from __future__ import annotations
 
@@ -36,11 +31,7 @@ data actually changes.
 
 
 class PipelineCollector:
-    """Exports ingest/metrics health read straight from the database.
-
-    CronJob pods live for minutes and would be missed by a 30 s scrape, so the
-    always-on API reports on the pipeline's behalf.
-    """
+    """Exports ingest/metrics health read straight from the database."""
 
     def collect(self):
         try:
@@ -69,10 +60,6 @@ def create_app() -> FastAPI:
         title="elcourtside API",
         description=DESCRIPTION,
         version="0.1.0",
-        # Under /api like every route, so the Ingress needs one path rule and
-        # the footer's "API docs" link resolves the same locally and in the
-        # cluster. /health and /metrics stay at the root: probes and the
-        # ServiceMonitor address the pod directly, never through the Ingress.
         docs_url="/api/docs",
         openapi_url="/api/openapi.json",
     )

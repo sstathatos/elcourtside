@@ -1,9 +1,4 @@
-"""+/- per player: score deltas attributed to whoever is on court.
-
-Uses the lineup state at each scoring event (PBP order — a basket logged
-before a sub at the same clock credits the pre-sub lineup, matching how
-the table crew records it). Official boxscore plusMinus is the cross-check.
-"""
+"""+/- per player: score deltas attributed to whoever is on court."""
 
 from __future__ import annotations
 

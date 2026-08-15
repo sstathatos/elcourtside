@@ -1,6 +1,4 @@
-"""Scoring runs: longest streak of unanswered points per club per game,
-read off the score timeline (deltas, not event team codes — robust to
-mislabeled events)."""
+"""Scoring runs: longest streak of unanswered points per club per game, read off the score timeline (deltas, not event team codes — robust to mislabeled events)."""
 
 from __future__ import annotations
 

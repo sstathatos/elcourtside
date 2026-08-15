@@ -1,21 +1,4 @@
-"""In-process response cache, versioned by when the data was computed.
-
-Everything the API serves is a pure function of the SQLite file, and the file
-only changes when the nightly `python -m ingest && python -m metrics` finishes.
-So instead of guessing a TTL, cache entries carry the *version* of the data
-they were built from — `metrics_meta.computed_at:<source>:<season>`, written by
-metrics.engine at the end of each recompute. A recompute changes the stamp,
-which changes every key, which retires the whole season's entries at once. No
-stale window, no invalidation bookkeeping.
-
-`version` is a plain string parameter, not something this module derives on its
-own: live-game endpoints (roadmap — PBP carries a `Live` flag) will pass
-`ttl_version(30)` instead, and get ordinary time-bucketed caching from the same
-code path.
-
-Single api replica (SQLite is single-writer), so an in-process dict is the
-whole story — no Redis, no cross-pod coherence problem.
-"""
+"""In-process response cache, versioned by when the data was computed."""
 
 from __future__ import annotations
 
@@ -29,11 +12,6 @@ from typing import Any
 MAX_ENTRIES = 512
 _STAMP_TTL = 5.0  # seconds to reuse a computed_at lookup across a burst
 
-# Bump whenever a response's *shape* changes — a new field, a renamed one, a
-# different nesting. The data version cannot catch that: adding `roster` to the
-# team detail left computed_at untouched, so the ETag was unchanged, and every
-# browser holding a pre-roster copy revalidated into a 304 and kept serving it
-# indefinitely. Folding this into the key and the ETag retires those copies.
 SCHEMA_VERSION = "4"
 
 _entries: OrderedDict[tuple, Any] = OrderedDict()

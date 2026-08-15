@@ -1,6 +1,4 @@
-"""Indexes — the metrics that exist nowhere else pre-computed: scoring runs,
-blown leads, clutch, fouls drawn per 100 possessions.
-"""
+"""Indexes — the metrics that exist nowhere else pre-computed: scoring runs, blown leads, clutch, fouls drawn per 100 possessions."""
 
 from __future__ import annotations
 

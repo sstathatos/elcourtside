@@ -1,7 +1,4 @@
-"""CLI entrypoint: python -m ingest [--seasons latest|all|E2024,E2025] ...
-
-This is also the CronJob command in the Helm chart.
-"""
+"""CLI entrypoint: python -m ingest [--seasons latest|all|E2024,E2025] ..."""
 
 from __future__ import annotations
 

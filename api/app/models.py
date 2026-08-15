@@ -1,10 +1,4 @@
-"""Pydantic response models — these are what turn /docs into a usable contract.
-
-Deliberately shallow: they mirror the columns metrics writes, so a change to a
-metric surfaces here as a field, not as an untyped blob. Composite payloads
-(game/team/player detail) allow extra keys so adding a column to a rollup does
-not require touching this file to keep it visible.
-"""
+"""Pydantic response models — these are what turn /docs into a usable contract."""
 
 from __future__ import annotations
 
@@ -14,12 +8,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class PlayerSort(str, Enum):
-    """Whitelist for ORDER BY on the player leaderboard.
-
-    Anything not in this enum is rejected by FastAPI with a 422 before it can
-    reach SQL — a column name can't be a bound parameter, so this is what
-    keeps `?sort=` from becoming an injection point.
-    """
+    """Whitelist for ORDER BY on the player leaderboard."""
 
     pir_avg = "pir_avg"
     pir_total = "pir_total"
@@ -33,8 +22,7 @@ class PlayerSort(str, Enum):
 
 
 class Phase(str, Enum):
-    """Competition stage. Standings mean the regular season; the knockout
-    stages are results rather than a table."""
+    """Competition stage."""
 
     RS = "RS"
     PI = "PI"
@@ -54,8 +42,6 @@ class Season(BaseModel):
     season_code: str
     season_name: str | None = None
     year: int | None = None
-    # The club that won the title. Not the top of the standings — those rank
-    # the regular season, and the Final Four decides the championship.
     winner_club_code: str | None = None
     games: int
     games_with_pbp: int
@@ -152,9 +138,6 @@ class RadarAxis(BaseModel):
     label: str
     value: float
     percentile: float  # rank against the league, 0-100 — the radar's only scale
-    # True where a smaller raw value is better (turnovers, opponent shooting).
-    # The percentile is already flipped, so the radar still reads
-    # "further out is better"; this flags it for the label and the table.
     lower_is_better: bool = False
 
 
@@ -193,11 +176,8 @@ class PlayerSeason(BaseModel):
 
 class PlayerDetail(PlayerSeason):
     games: list[dict]
-    # Null for the ~3% of players the registry has no photo for, and for
-    # everyone who is not a player (coaches and staff carry no images at all).
     headshot_url: str | None = None
     action_url: str | None = None
-    # Empty for players below the games threshold, where a per-36 rate is noise
     radar: list[RadarAxis] = []
 
 

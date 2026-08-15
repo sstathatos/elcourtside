@@ -1,8 +1,4 @@
-"""Shared router plumbing: season resolution and the cache/ETag response path.
-
-Every read endpoint goes through `serve()`, so caching, validators and headers
-are defined once instead of per route.
-"""
+"""Shared router plumbing: season resolution and the cache/ETag response path."""
 
 from __future__ import annotations
 
@@ -31,13 +27,7 @@ def resolve_season(conn, season: str | None) -> str:
 
 def serve(request: Request, response: Response, conn, season: str,
           key: tuple, producer: Callable[[], Any]) -> Any:
-    """Cache-aware response.
-
-    The cache key and the ETag share the same version component — the season's
-    `computed_at` stamp — so a recompute invalidates the server-side entry and
-    every browser copy at the same instant. A client that sends back a matching
-    ETag gets 304 and no body.
-    """
+    """Cache-aware response."""
     version = cache.season_version(conn, SOURCE, season)
     tag = cache.etag(key, version)
     headers = {"ETag": tag, "Cache-Control": CACHE_CONTROL, "X-Season": season}

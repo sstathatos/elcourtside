@@ -1,16 +1,4 @@
-"""Reconstruct who was on court from starters + IN/OUT events.
-
-The trickiest parser (see doc/plan.md). Defensive against real-world PBP
-messiness, all counted as anomalies rather than errors:
-- IN/OUT pairs at the same clock arrive in either order → same-club subs at
-  identical timestamps are batched, OUTs applied before INs;
-- OUT with no prior IN (missing IN event) → assume the player entered at
-  the start of the current period;
-- double IN, or a club transiently above 5 on court → recorded, tolerated.
-
-Ground truth check: computed per-player seconds are reconciled against the
-boxscore's timePlayed by the --validate command.
-"""
+"""Reconstruct who was on court from starters + IN/OUT events."""
 
 from __future__ import annotations
 
@@ -22,8 +10,6 @@ from metrics.timeline import SUB_TYPES, Timeline, _period_bounds
 
 @dataclass
 class GameLineups:
-    # per timeline-event index: (home on-court, away on-court) in effect at
-    # that event (subs earlier in PBP order already applied)
     states: list[tuple[frozenset, frozenset]]
     intervals: dict[str, list[tuple[float, float]]]
     seconds: dict[str, float]
@@ -31,10 +17,7 @@ class GameLineups:
 
 
 def _batched_order(events) -> list[int]:
-    """Event indices with same-time sub batches reordered OUT-first.
-
-    A batch is a contiguous run of IN/OUT events sharing one timestamp
-    (either club) — the table crew logs swap pairs in arbitrary order."""
+    """Event indices with same-time sub batches reordered OUT-first."""
     order: list[int] = []
     i = 0
     while i < len(events):
@@ -96,8 +79,6 @@ def track_lineups(timeline: Timeline, home_starters: set[str],
         states[k] = (frozenset(entry[timeline.home_club]),
                      frozenset(entry[timeline.away_club]))
 
-    # _batched_order permutes only within same-time sub batches, so filling
-    # any stragglers in index order keeps states consistent
     last = (frozenset(home_starters), frozenset(away_starters))
     final_states: list[tuple[frozenset, frozenset]] = []
     for s in states:

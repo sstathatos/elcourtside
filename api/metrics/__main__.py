@@ -1,12 +1,4 @@
-"""CLI: python -m metrics [--seasons latest|all|E2024,...] [--db PATH] [--validate]
-
-Computes derived metrics tables from ingested data (no network). The nightly
-CronJob chains it after ingest: python -m ingest && python -m metrics.
-
---validate skips recomputation and cross-checks stored metrics against the
-official boxscore ground truth (valuation vs our PIR, plusMinus vs our
-PBP-derived +/-, timePlayed vs our reconstructed seconds).
-"""
+"""CLI: python -m metrics [--seasons latest|all|E2024,...] [--db PATH] [--validate] Computes derived metrics tables from ingested data (no network)."""
 
 from __future__ import annotations
 

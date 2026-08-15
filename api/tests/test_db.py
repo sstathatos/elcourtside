@@ -40,7 +40,6 @@ def test_raw_roundtrip(conn):
     payload = b'{"data": [1, 2, 3]}'
     db.store_raw(conn, "test", "games", "E2025:0", payload, "t1")
     assert db.load_raw(conn, "test", "games", "E2025:0") == payload
-    # stored compressed, refetch replaces
     db.store_raw(conn, "test", "games", "E2025:0", b"{}", "t2")
     assert db.load_raw(conn, "test", "games", "E2025:0") == b"{}"
     assert db.load_raw(conn, "test", "games", "nope") is None
@@ -65,7 +64,6 @@ def test_replace_boxscore_idempotent(conn):
     db.replace_boxscore_lines(conn, "test", "E2025", 1, rows)
     db.replace_boxscore_lines(conn, "test", "E2025", 1, rows)
     assert conn.execute("SELECT count(*) c FROM boxscore_lines").fetchone()["c"] == 3
-    # re-ingest with fewer rows leaves no stale rows behind
     db.replace_boxscore_lines(conn, "test", "E2025", 1, rows[:1])
     assert conn.execute("SELECT count(*) c FROM boxscore_lines").fetchone()["c"] == 1
 

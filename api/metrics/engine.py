@@ -1,9 +1,4 @@
-"""Orchestration: recompute all derived tables for a season from the
-Phase 1 tables. Delete+insert per season — always safe to re-run.
-
-Games without PBP (pre-2007 era, pbp_status='missing') get boxscore-only
-metrics: PIR, possessions, fouls drawn. Timeline-based columns stay NULL.
-"""
+"""Orchestration: recompute all derived tables for a season from the Phase 1 tables."""
 
 from __future__ import annotations
 
@@ -65,8 +60,6 @@ def compute_season(conn, source: str, season_code: str) -> SeasonSummary:
         _rollup_teams(conn, source, season_code)
         _write_standings(conn, source, season_code)
 
-        # microseconds, not seconds: the API derives its cache key and ETags
-        # from this stamp, so two recomputes must never collide
         now = datetime.now(UTC).isoformat(timespec="microseconds")
         for key, value in ((f"computed_at:{source}:{season_code}", now),
                            (f"engine_version:{source}:{season_code}", str(ENGINE_VERSION))):
@@ -232,10 +225,6 @@ def _rollup_players(conn, source: str, season_code: str) -> None:
                   SUM(b.fg2m), SUM(b.fg2a), SUM(b.fg3m), SUM(b.fg3a),
                   SUM(b.ftm), SUM(b.fta),
                   SUM(m.opp_fgm), SUM(m.opp_fga), SUM(m.opp_points),
-                  -- Opponent possessions faced ~= this player's share of the
-                  -- game's possessions. poss_share is already minutes-weighted,
-                  -- and both teams see almost the same number of possessions,
-                  -- so it stands in for the denominator of DRTG.
                   SUM(m.poss_share)
            FROM boxscore_lines b
            JOIN player_game_metrics m
@@ -275,15 +264,11 @@ def _rollup_teams(conn, source: str, season_code: str) -> None:
                       AND x.max_lead IS NOT NULL
                     ORDER BY x.max_lead DESC LIMIT 1),
                   SUM(t.clutch_pts_for), SUM(t.clutch_pts_against), SUM(t.clutch_seconds),
-                  -- Own totals, from this club's team line in each boxscore.
                   SUM(own.points), SUM(own.fg2m), SUM(own.fg2a),
                   SUM(own.fg3m), SUM(own.fg3a), SUM(own.ftm), SUM(own.fta),
                   SUM(own.reb_off), SUM(own.reb_def), SUM(own.assists),
                   SUM(own.steals), SUM(own.blocks_favour), SUM(own.turnovers),
                   SUM(t.possessions),
-                  -- Opponent totals, from the other side of the same game.
-                  -- Without these there is no honest defensive rate: a club's
-                  -- own boxscore says nothing about the shooting it allowed.
                   SUM(opp.points), SUM(opp.fg2m), SUM(opp.fg2a),
                   SUM(opp.fg3m), SUM(opp.fg3a), SUM(opp.ftm), SUM(opp.fta),
                   SUM(opp.reb_off), SUM(opp.reb_def), SUM(opp.turnovers),

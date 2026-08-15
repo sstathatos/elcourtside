@@ -1,6 +1,4 @@
-"""Standings — page 1 of the site. Straight read of the `standings` table,
-which the metrics engine already ranked with the Euroleague tiebreak chain.
-"""
+"""Standings — page 1 of the site."""
 
 from __future__ import annotations
 
@@ -20,8 +18,7 @@ router = APIRouter(prefix="/api", tags=["standings"])
 def get_clubs(request: Request, response: Response,
               season: str | None = Query(None, description="season code, e.g. E2025"),
               conn: sqlite3.Connection = Depends(get_conn)):
-    """Club names and crest URLs. The UI fetches this once and resolves crests
-    by club code, so every other endpoint stays free of image URLs."""
+    """Club names and crest URLs."""
     season = resolve_season(conn, season)
     return serve(request, response, conn, season, ("clubs", season),
                  lambda: queries.clubs(conn, SOURCE, season))

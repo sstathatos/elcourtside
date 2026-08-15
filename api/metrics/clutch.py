@@ -1,12 +1,4 @@
-"""Clutch stats: last 5:00 of the 4th quarter or any overtime, with the
-score margin ≤ 5 — evaluated moment by moment, not per game.
-
-Time on the clutch clock is accumulated over segments between consecutive
-events (score, and therefore margin, only changes at events). Points and
-+/- count at events whose *pre-event* margin qualifies — the shot that
-breaks a 5-point game open still counts as clutch; everything after it at
-margin 6+ does not, until the margin tightens again.
-"""
+"""Clutch stats: last 5:00 of the 4th quarter or any overtime, with the score margin ≤ 5 — evaluated moment by moment, not per game."""
 
 from __future__ import annotations
 
@@ -42,7 +34,6 @@ def compute_clutch(timeline: Timeline, lineups: GameLineups) -> ClutchStats:
     if not events:
         return stats
 
-    # time accumulation over constant-margin segments
     for i, e in enumerate(events):
         t1 = e.abs_s
         t2 = events[i + 1].abs_s if i + 1 < len(events) else timeline.duration
@@ -59,7 +50,6 @@ def compute_clutch(timeline: Timeline, lineups: GameLineups) -> ClutchStats:
         for p in on_home | on_away:
             stats.player_seconds[p] += dt
 
-    # scoring at qualifying moments
     for e in events:
         dh, da = e.delta_home, e.delta_away
         if dh == 0 and da == 0:

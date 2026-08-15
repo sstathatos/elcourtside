@@ -33,7 +33,6 @@ def test_paces_requests_two_seconds_apart():
     client.get_json("https://x.test/one")
     client.get_json("https://x.test/two")
     client.get_json("https://x.test/three")
-    # first call free; each subsequent call waits out the 2s interval
     assert fake.sleeps == [pytest.approx(2.0), pytest.approx(2.0)]
     assert client.requests_made == 3
 

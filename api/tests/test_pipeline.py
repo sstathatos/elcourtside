@@ -1,5 +1,4 @@
-"""Pipeline tests with a fake in-memory source: verifies season selection,
-final-game bookkeeping (never re-fetch), live handling, and missing PBP."""
+"""Pipeline tests with a fake in-memory source: verifies season selection, final-game bookkeeping (never re-fetch), live handling, and missing PBP."""
 
 from ingest import db, pipeline
 from ingest.sources.base import FetchedGameDetail, FetchedList, Source
@@ -94,12 +93,10 @@ def test_latest_skips_unplayed_season_and_finalizes(conn):
     assert stats.seasons_processed == ["E2025"]
     assert stats.games_processed == 2 and stats.games_finalized == 2
     assert src.boxscore_calls == [("E2025", 1), ("E2025", 2)]
-    # unplayed game untouched, played ones final
     finals = {r["game_code"]: r["is_final"] for r in
               conn.execute("SELECT game_code, is_final FROM games WHERE season_code='E2025'")}
     assert finals == {1: 1, 2: 1, 3: 0}
     assert db.meta_get(conn, "last_successful_ingest_at")
-    # both seasons' schedules stored even though only E2025 processed
     assert conn.execute("SELECT count(*) c FROM games").fetchone()["c"] == 4
 
 
@@ -117,7 +114,6 @@ def test_live_game_stays_pending(conn):
     assert stats.games_finalized == 1
     row = conn.execute("SELECT is_final, pbp_status FROM games WHERE game_code=2 AND season_code='E2025'").fetchone()
     assert row["is_final"] == 0 and row["pbp_status"] == "ok"
-    # next run re-fetches only the live game
     src.live_games = set()
     pipeline.run(conn, src, seasons="latest")
     assert src.boxscore_calls.count(("E2025", 2)) == 2
@@ -154,7 +150,6 @@ def test_limit_caps_detail_fetches(conn):
     stats = pipeline.run(conn, src, seasons="latest", limit=1)
     assert stats.games_processed == 1
     assert len(src.boxscore_calls) == 1
-    # the second game is picked up by the next run
     pipeline.run(conn, src, seasons="latest")
     assert len(src.boxscore_calls) == 2
 

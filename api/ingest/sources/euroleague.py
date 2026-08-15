@@ -1,19 +1,4 @@
-"""Euroleague source.
-
-Endpoints (all unauthenticated, verified July 2026):
-- https://api-live.euroleague.net/v2/... — seasons, games, boxscores, people.
-  List endpoints return {"data": [...], "total": N}, 500 items per page,
-  paginated with ?offset=.
-- https://live.euroleague.net/api/PlayByPlay?gamecode=&seasoncode= — PBP.
-  Quarter arrays (FirstQuarter..ForthQuarter [sic], ExtraTime) + Live flag.
-  Empty/absent for seasons before E2007.
-
-Quirks handled here so the rest of the codebase never sees them:
-- PBP CODETEAM / PLAYER_ID are space-padded; PLAYER_ID has a 'P' prefix that
-  boxscore/people person codes don't ("P007200" vs "007200").
-- The boxscore payload does not identify the clubs — local/road club codes
-  must be passed in from the games table.
-"""
+"""Euroleague source."""
 
 from __future__ import annotations
 
@@ -40,10 +25,7 @@ def normalize_person_code(value: str | None) -> str:
 
 
 def normalize_pbp_player_id(value: str | None) -> str:
-    """PBP PLAYER_IDs prefix *every* person code with 'P' — numeric
-    ('P007200' vs '007200') and legacy alphanumeric ('PTGB' vs 'TGB', Llull)
-    alike — so one leading 'P' is always stripped. Bench pseudo-codes like
-    'CO_A' (coach) don't start with 'P' and pass through untouched."""
+    """PBP PLAYER_IDs prefix *every* person code with 'P' — numeric ('P007200' vs '007200') and legacy alphanumeric ('PTGB' vs 'TGB', Llull) alike — so one leading 'P' is always stripped."""
     s = (value or "").strip()
     if len(s) > 1 and s.startswith("P"):
         return s[1:]
@@ -53,8 +35,6 @@ def normalize_pbp_player_id(value: str | None) -> str:
 def _i(v) -> int | None:
     return None if v is None else int(round(float(v)))
 
-
-# -- pure parsers (fixture-tested) --------------------------------------------
 
 def parse_seasons(items: list[dict]) -> list[dict]:
     return [
@@ -197,9 +177,6 @@ def parse_people(items: list[dict]) -> list[dict]:
     rows = []
     for p in items:
         person = p.get("person") or {}
-        # `images` appears on both the entry and the nested person; the entry
-        # wins where both are set. Players carry headshot/action (identical
-        # URLs in practice); coaches and staff carry an empty object.
         images = {**(person.get("images") or {}), **(p.get("images") or {})}
         rows.append({
             "person_code": normalize_person_code(person.get("code")),
@@ -223,9 +200,7 @@ def parse_people(items: list[dict]) -> list[dict]:
 
 
 def parse_clubs(items: list[dict]) -> list[dict]:
-    """Club registry from a schedule payload — every club appears on one side
-    or the other. Later rows win, so a club named differently mid-season keeps
-    its most recent name."""
+    """Club registry from a schedule payload — every club appears on one side or the other."""
     clubs: dict[str, dict] = {}
     for g in items:
         for side in ("local", "road"):
@@ -240,8 +215,6 @@ def parse_clubs(items: list[dict]) -> list[dict]:
             }
     return list(clubs.values())
 
-
-# -- source -------------------------------------------------------------------
 
 class EuroleagueSource(Source):
     name = "euroleague"

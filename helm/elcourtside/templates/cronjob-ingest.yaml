@@ -61,6 +61,12 @@ spec:
               volumeMounts:
                 - name: data
                   mountPath: /data
+                # SQLite spills sorts and GROUP BY to its temp directory, which
+                # defaults to /tmp. With readOnlyRootFilesystem and no writable
+                # /tmp it fails with "disk I/O error" — which is what broke the
+                # first production recompute, on the player rollup.
+                - name: tmp
+                  mountPath: /tmp
               securityContext:
                 allowPrivilegeEscalation: false
                 readOnlyRootFilesystem: true

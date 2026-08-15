@@ -1,14 +1,4 @@
-"""Possession estimates and fouls-drawn rates (boxscore-based).
-
-Team possessions per game use the standard estimator over the team's
-*total* boxscore line:  FGA + 0.44·FTA − ORB + TO.
-
-Player-level "possessions available" is the team's possessions scaled by
-the player's share of game time (seconds_played / game duration): a player
-on court for half the game saw ~half the team's possessions. Fouls drawn
-per 100 possessions divides boxscore fouls_received by that availability —
-a rate metric that is fair across bench and starter minutes.
-"""
+"""Possession estimates and fouls-drawn rates (boxscore-based)."""
 
 from __future__ import annotations
 
