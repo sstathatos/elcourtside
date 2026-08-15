@@ -10,9 +10,6 @@ import Games from '../../islands/Games.tsx';
   description="Euroleague schedule and results with full boxscores, per-game PIR and +/-, and a score worm rebuilt from play-by-play."
 >
   <script is:inline>
-    // A game's view shows the two clubs' crests instead of the basketball.
-    // Set before the header is parsed, so opening a game link directly never
-    // flashes the ball first.
     if (new URLSearchParams(location.search).has('code')) {
       document.documentElement.dataset.gameView = 'detail';
     }

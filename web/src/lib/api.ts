@@ -1,24 +1,9 @@
-/**
- * Typed client for the elcourtside API.
- *
- * Always same-origin `/api`: the ingress routes it in the cluster, Vite proxies
- * it in dev (see astro.config.mjs). No base-URL switching, no CORS in the
- * browser.
- *
- * There is no client-side cache here on purpose — the API sends
- * `Cache-Control: max-age=300` plus an ETag derived from when the metrics were
- * computed, so the browser's own cache handles repeats and revalidation.
- *
- * Types mirror the Pydantic models in api/app/models.py.
- */
-
 export const API = '/api';
 
 export interface Season {
   season_code: string;
   season_name: string | null;
   year: number | null;
-  /** Title winner — decided by the Final Four, not by topping the standings. */
   winner_club_code: string | null;
   games: number;
   games_with_pbp: number;
@@ -163,8 +148,6 @@ export interface TeamSeason {
   losses: number | null;
   point_diff: number | null;
   rank: number | null;
-  /* Derived team rates, computed by the API from stored season totals —
-     the same definitions the radar uses. */
   ortg: number | null;
   drtg: number | null;
   net_rtg: number | null;
@@ -199,11 +182,8 @@ export interface TeamGameLogRow {
 export interface RadarAxis {
   key: string;
   label: string;
-  /** The real rate, shown as a direct label. */
   value: number;
-  /** Rank against the league, 0-100 — the only thing the radius encodes. */
   percentile: number;
-  /** Smaller raw value is better; the percentile is already flipped. */
   lower_is_better?: boolean;
 }
 
@@ -216,7 +196,6 @@ export interface RosterRow {
   country_code: string | null;
   birth_date: string | null;
   headshot_url: string | null;
-  /** Null for a registered player who hasn't appeared in a game yet. */
   games_played: number | null;
   seconds: number | null;
   points: number | null;
@@ -253,8 +232,6 @@ export interface PlayerSeason {
   clutch_pm: number | null;
   fouls_drawn_per100: number | null;
   headshot_url: string | null;
-  /* Derived rates, computed by the API from the stored sums — the same
-     definitions the radar uses, so a column and a spoke cannot disagree. */
   pts36: number | null;
   fg3_pct: number | null;
   ts_pct: number | null;
@@ -289,10 +266,8 @@ export interface PlayerGameLogRow {
 
 export interface PlayerDetail extends PlayerSeason {
   games: PlayerGameLogRow[];
-  /** Null for players the registry has no photo for (~3%). */
   headshot_url: string | null;
   action_url: string | null;
-  /** Empty below the games threshold, where a per-36 rate would be noise. */
   radar: RadarAxis[];
 }
 
@@ -352,7 +327,6 @@ export interface FoulsDrawnIndex {
   }>;
 }
 
-/** Competition stage. Standings are the regular season; the rest are results. */
 export type Phase = 'RS' | 'PI' | 'PO' | 'FF';
 
 export type PlayerSort =
@@ -373,7 +347,6 @@ export type TeamSort =
   | 'max_blown_lead'
   | 'clutch_pts_for';
 
-/** Thrown for any non-2xx so islands can show the API's own message. */
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -404,7 +377,6 @@ async function get<T>(path: string, params: Params = {}): Promise<T> {
       const body = (await res.json()) as { detail?: string };
       if (body.detail) detail = body.detail;
     } catch {
-      /* non-JSON error body — keep the status line */
     }
     throw new ApiError(detail, res.status);
   }
@@ -449,9 +421,6 @@ export const api = {
     get<FoulsDrawnIndex>('/indexes/fouls-drawn', p),
 };
 
-/* --- formatting helpers (pure — unit tested) ----------------------------- */
-
-/** 1234.5 → "20:35". The boxscore stores court time in seconds. */
 export function mmss(seconds: number | null | undefined): string {
   if (seconds === null || seconds === undefined) return '—';
   const total = Math.round(seconds);
@@ -460,13 +429,11 @@ export function mmss(seconds: number | null | undefined): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-/** Fixed-decimal number, em dash for nulls so columns never look broken. */
 export function num(value: number | null | undefined, decimals = 1): string {
   if (value === null || value === undefined || Number.isNaN(value)) return '—';
   return value.toFixed(decimals);
 }
 
-/** Integers with an explicit sign — +/- columns read wrong without it. */
 export function signed(value: number | null | undefined): string {
   if (value === null || value === undefined) return '—';
   return value > 0 ? `+${value}` : String(value);
@@ -482,15 +449,6 @@ const MONTHS = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
-/**
- * "2025-09-30T18:00:00Z" → "30 Sep 2025".
- *
- * Formatted by hand rather than with toLocaleDateString: ICU renders some
- * months with four letters ("Sept") and differs between Node and browsers, so
- * a locale-formatted column would be ragged and untestable. Kept in UTC — the
- * API's dates are UTC and a local-time conversion would move tip-offs across
- * the date line for some readers.
- */
 export function shortDate(iso: string | null | undefined): string {
   if (!iso) return '—';
   const d = new Date(iso);
@@ -498,7 +456,6 @@ export function shortDate(iso: string | null | undefined): string {
   return `${String(d.getUTCDate()).padStart(2, '0')} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
-/** Elapsed seconds → "Q3 04:12" / "OT1 02:00" for chart axes and events. */
 export function gameClock(t: number): string {
   if (t <= 2400) {
     const q = Math.min(4, Math.floor(t / 600) + 1);
@@ -508,12 +465,10 @@ export function gameClock(t: number): string {
   return `OT${ot} ${mmss(t - 2400 - (ot - 1) * 300)}`;
 }
 
-/** Seasons before 2007-08 have no play-by-play: hide the derived columns. */
 export function isBoxscoreOnly(season: Season | undefined): boolean {
   return !!season && season.games_with_pbp === 0;
 }
 
-/** Read a query-string param — how detail views get their entity on a static site. */
 export function param(name: string, search = typeof location === 'undefined' ? '' : location.search) {
   return new URLSearchParams(search).get(name);
 }

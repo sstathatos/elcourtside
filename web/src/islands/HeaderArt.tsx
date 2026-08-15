@@ -1,19 +1,8 @@
-/**
- * Page-header decoration for Teams and Players.
- *
- * These two pages replace the generic basketball with the thing the page is
- * actually about — the league's crests, or the faces at the top of the
- * leaderboard. Both degrade to nothing while loading or if the API is down:
- * the header is decoration, and an empty gap reads better than a spinner or a
- * row of broken images.
- */
-
 import { useEffect } from 'react';
 import { api } from '../lib/api';
 import { useApi, useClubs, useParam, useSeasons } from './hooks';
 import { PlayerPhoto } from './ui';
 
-/** Every club's crest, or just one club's on a team detail view. */
 export function TeamCrests() {
   const { season } = useSeasons();
   const club = useParam('club');
@@ -39,13 +28,6 @@ export function TeamCrests() {
   );
 }
 
-/**
- * The two clubs of the game being viewed, in place of the basketball.
- *
- * Only renders on a game detail view (?code=N); the schedule keeps the ball.
- * Re-requesting the game here is free — the Games island has already fetched
- * it, and the API's max-age makes the second call a browser cache hit.
- */
 export function GameTeams() {
   const code = useParam('code');
   const { season } = useSeasons();
@@ -55,9 +37,6 @@ export function GameTeams() {
     [code, season],
   );
 
-  // Hides the basketball while a game is open. The inline script in
-  // games/index.astro covers the first paint; this keeps it in step as the
-  // reader moves between the schedule and a game.
   useEffect(() => {
     const root = document.documentElement;
     if (code) root.dataset.gameView = 'detail';
@@ -79,7 +58,6 @@ export function GameTeams() {
   );
 }
 
-/** The faces at the top of the PIR leaderboard. */
 export function PlayerFaces() {
   const { season } = useSeasons();
   const state = useApi(

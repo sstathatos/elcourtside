@@ -1,11 +1,3 @@
-/**
- * Games: the schedule, and one game's detail behind ?code=N.
- *
- * Detail lives on the same static page rather than a prerendered /games/42,
- * so the build never has to know which games exist — the nightly ingest can
- * add games without a rebuild.
- */
-
 import { api, mmss, num, shortDate, signClass, signed, type BoxscoreLine } from '../lib/api';
 import { setParam, useApi, useParam, useSeasons } from './hooks';
 import {

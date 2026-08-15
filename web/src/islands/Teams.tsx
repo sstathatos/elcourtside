@@ -1,5 +1,3 @@
-/** Teams: season table sorted client-side, plus one club behind ?club=CODE. */
-
 import { api, mmss, num, shortDate, signClass, signed, type TeamSeason } from '../lib/api';
 import { setParam, useApi, useParam, useSeasons, useSort } from './hooks';
 import {
@@ -21,8 +19,6 @@ export default function Teams() {
   return club ? <TeamDetail club={club} /> : <TeamTable />;
 }
 
-// Every column sorts client-side: the league is 18-20 clubs and all of them
-// are loaded, so unlike the paged player leaderboard, sorting here is honest.
 const COLUMNS: Array<{
   key: keyof TeamSeason;
   label: string;
@@ -32,7 +28,6 @@ const COLUMNS: Array<{
   { key: 'wins', label: 'W', metric: 'w' },
   { key: 'losses', label: 'L', metric: 'l' },
   { key: 'point_diff', label: 'Diff', metric: 'diff' },
-  // Ratings first — the headline of any team page, and pace-independent.
   { key: 'ortg', label: 'ORTG', metric: 'ortg', decimals: 1 },
   { key: 'drtg', label: 'DRTG', metric: 'drtg_team', decimals: 1 },
   { key: 'net_rtg', label: 'NET', metric: 'net_rtg', decimals: 1 },
@@ -120,8 +115,6 @@ function TeamTable() {
 }
 
 function TeamDetail({ club }: { club: string }) {
-  // The season comes from the URL, so opening a club from the 2023-24 table
-  // shows 2023-24 rather than falling back to the newest season.
   const { season } = useSeasons();
   const state = useApi(() => api.team(club, season), [club, season]);
 
@@ -131,8 +124,6 @@ function TeamDetail({ club }: { club: string }) {
       <Panel state={state} what="team">
         {(t) => (
           <>
-            {/* No crest here — the page header already shows this club's, and a
-                second one collided with the back link above. */}
             <h2 className="section-title">{t.club_name ?? t.club_code}</h2>
             <div className="detail-split">
               <div className="stat-row">
@@ -166,9 +157,6 @@ function TeamDetail({ club }: { club: string }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {/* `?? []` is not defensive noise: a browser holding a cached
-                      response from before this field existed would otherwise
-                      throw here and blank the whole page. */}
                   {(t.roster ?? []).map((p) => (
                     <tr key={p.player_code}>
                       <td className="rank" style={{ textAlign: 'left' }}>
@@ -187,9 +175,6 @@ function TeamDetail({ club }: { club: string }) {
                       <td style={{ textAlign: 'left' }} className="muted">
                         {p.country_code ?? '—'}
                       </td>
-                      {/* a registered player who has not appeared yet has no
-                          metrics row — em dashes rather than zeros, which would
-                          read as "played and scored nothing" */}
                       <td className="num">{p.games_played ?? '—'}</td>
                       <td className="num">
                         {p.games_played ? mmss((p.seconds ?? 0) / p.games_played) : '—'}

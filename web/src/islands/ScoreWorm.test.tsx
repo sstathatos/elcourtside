@@ -1,12 +1,3 @@
-/**
- * Geometry checks for the score worm.
- *
- * Rendered to static markup and inspected numerically because there is no
- * browser in this environment — these assertions stand in for looking at it:
- * the path must stay inside the viewBox, land on the final margin, and label
- * both peaks.
- */
-
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { GameTimeline, TimelinePoint } from '../lib/api';
@@ -19,7 +10,6 @@ function point(t: number, home: number, away: number): TimelinePoint {
   return { t, home, away, quarter: 1, ot: 0, play_type: '2FGM', club_code: null, player_code: null };
 }
 
-/** Home races to +12, away leads by 10 and wins by 3 — both poles exercised. */
 const tl: GameTimeline = {
   game_code: 1,
   has_pbp: true,

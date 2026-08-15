@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { spokePoint } from './Radar';
 
-// Derived, not hardcoded: the plot can be resized without rewriting the tests.
 const CENTRE = spokePoint(0, 0, 4);
 const CX = CENTRE.x;
 const CY = CENTRE.y;

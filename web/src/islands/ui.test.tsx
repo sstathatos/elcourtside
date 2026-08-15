@@ -1,5 +1,3 @@
-/** The header tooltips are the site's glossary — check they actually attach. */
-
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { GLOSSARY } from '../lib/glossary';

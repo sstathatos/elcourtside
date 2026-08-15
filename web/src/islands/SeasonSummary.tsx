@@ -1,12 +1,3 @@
-/**
- * Landing-page strip: what the database actually holds right now.
- *
- * The homepage is otherwise static prose; this is the one live piece, so the
- * claim "computed nightly" is visible rather than asserted. Renders nothing
- * until it has data — a landing page should never show a spinner or an error
- * box above the fold.
- */
-
 import { api } from '../lib/api';
 import { useApi } from './hooks';
 

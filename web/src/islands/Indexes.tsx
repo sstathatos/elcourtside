@@ -1,11 +1,3 @@
-/**
- * Indexes — the metrics that exist nowhere else pre-computed.
- *
- * Four tabs rather than four pages: they share a season, they are all "the
- * derived stuff", and switching between them is a comparison the reader
- * actually makes.
- */
-
 import { useState } from 'react';
 import { api, gameClock, mmss, num, signClass, signed } from '../lib/api';
 import { useApi, useSeasons } from './hooks';

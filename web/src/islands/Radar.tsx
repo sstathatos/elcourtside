@@ -1,36 +1,13 @@
-/**
- * Radar of a player's or club's core rates.
- *
- * The honest-radar problem: raw figures on shared spokes are meaningless —
- * "24 points" and "1.6 assists" would draw the same length if the axes were
- * scaled independently, and the shape would be an artefact of the units. So
- * the radius is one thing only: **percentile against the league**, computed by
- * the API. The raw figure rides along as a direct label, never tooltip-gated.
- *
- * A single series, so no legend — the heading names it. The values are also
- * available as a table below, which is the accessible twin of the shape.
- */
-
 import { useState } from 'react';
 import type { RadarAxis } from '../lib/api';
 
 const CX = 150;
 const CY = 150;
 const R = 130;
-// Inner rings only. The outer ring is the scale's edge — "league best" — so it
-// is drawn separately and darker than the grid it closes.
 const RINGS = [25, 50, 75];
-// The viewBox reserves room for the spoke labels, which sit outside the outer
-// ring. Kept as tight as the longest label allows: every extra unit of margin
-// is width the plot itself does not get.
 const VIEW_BOX = '-124 -46 512 380';
-// Past this many spokes the labels stop fitting two lines each, so the raw
-// figure moves to the hover readout and the table below. At twelve axes the
-// wedges are 30° apart and a value under every label collides with its
-// neighbours — verified by rendering it.
 const DENSE_AXES = 7;
 
-/** Spoke `i` of `total`, at `pct` of full radius. First spoke points up. */
 export function spokePoint(pct: number, index: number, total: number, radius = R) {
   const angle = (Math.PI * 2 * index) / total - Math.PI / 2;
   const r = (Math.max(0, Math.min(100, pct)) / 100) * radius;
@@ -63,7 +40,6 @@ export default function Radar({ axes, title }: { axes: RadarAxis[]; title: strin
           .map((a) => `${a.label}: ${a.value}, ${a.percentile}th percentile`)
           .join('. ')}`}
       >
-        {/* recessive hairline grid, solid — dashes would read as a threshold */}
         <g className="radar-grid">
           {RINGS.map((ring) => (
             <polygon key={ring} points={polygon(() => ring, n)} />
@@ -73,8 +49,6 @@ export default function Radar({ axes, title }: { axes: RadarAxis[]; title: strin
             return <line key={a.key} x1={CX} y1={CY} x2={p.x} y2={p.y} />;
           })}
         </g>
-        {/* the scale's edge: league best. Darker than the grid, lighter than
-            the series, so the three layers stay in order. */}
         <polygon className="radar-bound" points={polygon(() => 100, n)} />
 
         <polygon className="radar-area" points={shape} />
@@ -85,7 +59,6 @@ export default function Radar({ axes, title }: { axes: RadarAxis[]; title: strin
           return (
             <g key={a.key}>
               <circle className="radar-dot" cx={p.x} cy={p.y} r={4} />
-              {/* generous hit target: the 8px dot itself is far too small to aim at */}
               <circle
                 cx={p.x}
                 cy={p.y}
@@ -98,13 +71,9 @@ export default function Radar({ axes, title }: { axes: RadarAxis[]; title: strin
           );
         })}
 
-        {/* direct labels: metric and its real figure, so the shape is readable
-            without hovering anything */}
         {axes.map((a, i) => {
           const p = spokePoint(dense ? 122 : 128, i, n);
           const anchor = p.x > CX + 6 ? 'start' : p.x < CX - 6 ? 'end' : 'middle';
-          // Both lines hang below their anchor, so on the upper half they would
-          // grow back toward the plot and collide with the spoke's own dot.
           const y = dense || p.y >= CY - 10 ? p.y : p.y - 15;
           return (
             <g
@@ -128,8 +97,6 @@ export default function Radar({ axes, title }: { axes: RadarAxis[]; title: strin
         })}
       </svg>
 
-      {/* Only the hover readout stays inline; the explanation is a disclosure,
-          so the chart is not fronted by a paragraph every time. */}
       <p className="radar-readout" aria-live="polite">
         {active !== null ? (
           <>
@@ -170,8 +137,6 @@ export default function Radar({ axes, title }: { axes: RadarAxis[]; title: strin
               <tr key={a.key}>
                 <td style={{ textAlign: 'left' }}>
                   {a.label}
-                  {/* without this, "Ball Security 2.21" next to a high
-                      percentile looks like a contradiction */}
                   {a.lower_is_better && <span className="muted"> (lower is better)</span>}
                 </td>
                 <td className="num">{a.value}</td>

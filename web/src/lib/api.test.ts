@@ -1,5 +1,3 @@
-/** Only the pure helpers — the fetch layer is exercised by the manual pass. */
-
 import { describe, expect, it } from 'vitest';
 import { gameClock, isBoxscoreOnly, mmss, num, param, qs, shortDate, signed } from './api';
 
@@ -78,7 +76,6 @@ describe('shortDate', () => {
 });
 
 describe('isBoxscoreOnly', () => {
-  // 2005-06 predates play-by-play; no Final Four winner recorded for it either
   const season = {
     season_code: 'E2005',
     season_name: null,

@@ -1,11 +1,3 @@
-/**
- * Players: the leaderboard, and one player behind ?code=NNNNNN.
- *
- * Sorting happens server-side here (unlike Teams): the leaderboard is paged,
- * so sorting only the current page would be a lie. The sort keys are exactly
- * the enum the API accepts.
- */
-
 import { useEffect, useState } from 'react';
 import { api, mmss, num, shortDate, signClass, signed, type PlayerSort } from '../lib/api';
 import { setParam, useApi, useParam, useSeasons } from './hooks';
@@ -26,9 +18,6 @@ import Radar from './Radar';
 export default function Players() {
   const code = useParam('code');
 
-  // Keeps the page's own header hidden while a player is open. The inline
-  // script in players/index.astro sets this for the first paint; this keeps it
-  // right as the reader moves between the leaderboard and a player.
   useEffect(() => {
     const root = document.documentElement;
     if (code) root.dataset.playerView = 'detail';
@@ -106,9 +95,6 @@ function PlayerTable() {
                   <Th metric="pir_per36" label="PIR/36" />
                   <Th metric="pm_total" label="+/-" />
                   <Th metric="clutch_pm" label="Clutch +/-" />
-                  {/* The radar's twelve metrics, as columns. Same values from
-                      the same API fields, so the chart and the table cannot
-                      drift apart. */}
                   <Th metric="pts36" label="PTS/36" />
                   <Th metric="ts_pct" label="TS%" />
                   <Th metric="fg3_pct" label="3PT%" />
@@ -177,8 +163,6 @@ function PlayerDetail({ code }: { code: string }) {
       <Panel state={state} what="player">
         {(p) => (
           <>
-            {/* This player's own header, in place of the leaderboard's:
-                name and figures at full size, portraits off to the side. */}
             <div className="player-head">
               <div className="player-head-main">
                 <h1 className="player-name">{p.player_name ?? p.player_code}</h1>
@@ -187,9 +171,6 @@ function PlayerDetail({ code }: { code: string }) {
                   {mmss(p.seconds)} on court
                 </p>
               </div>
-              {/* The registry exposes `headshot` and `action`, but every player's
-                  two URLs are byte-identical today, so showing both just repeated
-                  the same picture. The second appears only if they ever differ. */}
               <div className="player-shots">
                 <PlayerPhoto src={p.headshot_url} name={p.player_name} size={150} />
                 {p.action_url && p.action_url !== p.headshot_url && (

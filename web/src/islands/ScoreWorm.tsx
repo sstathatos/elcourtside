@@ -1,26 +1,3 @@
-/**
- * Score worm — how the lead moved, not two rising totals.
- *
- * Form choice: the question a reader brings to a finished game is "who was
- * ahead, by how much, and when did it turn?" That is polarity over time, so
- * the encoding is the *margin* (home − away) as a diverging area around zero,
- * not two cumulative lines that both climb and sit almost on top of each
- * other. It also matches what the rest of the site is about — runs, blown
- * leads, clutch. Running totals aren't lost: the tooltip carries both scores.
- *
- * Steps, not slopes: the score is constant between scoring events, so the path
- * is step-after. A linear interpolation would draw points that were never on
- * the scoreboard.
- *
- * Color: the site's ink and accent, as everywhere else. Checked with the
- * palette validator — normal-vision ΔE 43, protan ΔE 31, both modes ≥ 3:1
- * against the chart surface (light mode uses a slightly deeper orange,
- * --chart-away, because the brand #f04e23 only reaches 2.81:1 on beige). The
- * validator also flags this pair's lightness/chroma, which is inherent to using
- * ink as a series color; the relief it asks for is present — a legend, direct
- * labels on both extremes, and the full boxscore table directly below.
- */
-
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { gameClock, type GameTimeline } from '../lib/api';
 
@@ -69,7 +46,6 @@ export default function ScoreWorm({ tl }: { tl: GameTimeline }) {
     [domain],
   );
 
-  // step-after: hold the previous margin until the moment it changes
   const stepPath = useMemo(() => {
     let d = `M ${x(0)} ${y(0)}`;
     let prev = 0;
@@ -83,7 +59,6 @@ export default function ScoreWorm({ tl }: { tl: GameTimeline }) {
 
   const areaPath = `${stepPath} L ${x(duration)} ${y(0)} L ${x(0)} ${y(0)} Z`;
 
-  // period boundaries: quarters through regulation, then one rule per OT
   const rules: Array<{ t: number; label: string }> = [];
   for (let q = 1; q * Q_LEN < duration; q++) {
     const t = q * Q_LEN;
@@ -103,7 +78,6 @@ export default function ScoreWorm({ tl }: { tl: GameTimeline }) {
     const svg = svgRef.current;
     if (!svg) return;
     const rect = svg.getBoundingClientRect();
-    // the SVG scales with viewBox, so convert client px back to user units
     const ux = ((event.clientX - rect.left) / rect.width) * VB_W;
     const t = ((ux - PAD.left) / (VB_W - PAD.left - PAD.right)) * duration;
     let found = samples[0]!;

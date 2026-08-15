@@ -10,7 +10,6 @@ interface Props {
 }
 
 const { title, description } = Astro.props;
-// No "Home" entry on purpose: the wordmark is the way back to the landing page.
 const nav = [
   { href: '/standings/', label: 'Standings' },
   { href: '/games/', label: 'Games' },
@@ -30,7 +29,6 @@ const path = Astro.url.pathname;
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>{title}</title>
     <script is:inline>
-      // Applied before first paint so the page never flashes the wrong theme.
       const stored = localStorage.getItem('theme');
       const preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       document.documentElement.dataset.theme = stored ?? preferred;
@@ -95,7 +93,6 @@ const path = Astro.url.pathname;
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
-    /* the wordmark and the ball are one unit — never break across lines */
     white-space: nowrap;
     flex: 0 0 auto;
     background: var(--chip-bg);
@@ -135,8 +132,6 @@ const path = Astro.url.pathname;
     text-decoration-color: var(--accent);
   }
 
-  /* Sits with the theme toggle rather than in the nav: it is about the site,
-     not another slice of the data. */
   .about-link {
     font-size: 0.85rem;
     font-weight: 700;
@@ -196,8 +191,6 @@ const path = Astro.url.pathname;
       gap: 0.5rem 1.1rem;
     }
 
-    /* nav drops to its own row, so About and the toggle group at the right of
-       the first one instead of trailing the wordmark */
     .about-link {
       margin-left: auto;
       font-size: 0.76rem;

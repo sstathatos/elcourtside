@@ -1,17 +1,8 @@
-/** Small presentational pieces every island shares. */
-
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import type { Club, Season } from '../lib/api';
 import { useClubs } from './hooks';
 import { GLOSSARY, type MetricKey } from '../lib/glossary';
 
-/**
- * Crest lookup for the island's current season.
- *
- * A context rather than a prop: clubs are named at every depth of these
- * tables — rows, opponent cells, game sides, detail headings — and threading a
- * map through all of them would touch every component in between.
- */
 const ClubsContext = createContext<Map<string, Club>>(new Map());
 
 export function ClubsProvider({
@@ -25,11 +16,6 @@ export function ClubsProvider({
   return <ClubsContext.Provider value={clubs}>{children}</ClubsContext.Provider>;
 }
 
-/**
- * A club's crest. Renders nothing when the club has no crest or the CDN image
- * fails, so a broken URL degrades to the plain name rather than a broken-image
- * icon — the name beside it always carries the meaning.
- */
 export function Crest({ code, size = 18 }: { code: string | null | undefined; size?: number }) {
   const clubs = useContext(ClubsContext);
   const [failed, setFailed] = useState(false);
@@ -39,8 +25,6 @@ export function Crest({ code, size = 18 }: { code: string | null | undefined; si
     <img
       className="crest"
       src={url}
-      // inline, not a CSS class: a fixed `.crest` size would override the
-      // attributes and pin every crest to the inline-text size
       style={{ width: size, height: size }}
       width={size}
       height={size}
@@ -51,11 +35,6 @@ export function Crest({ code, size = 18 }: { code: string | null | undefined; si
   );
 }
 
-/**
- * The standard way a club is named anywhere on the site: crest then label,
- * linking to the team page. `alt=""` on the crest is deliberate — the name is
- * right there, so announcing the logo too would just repeat it.
- */
 export function ClubLabel({
   code,
   name,
@@ -76,7 +55,6 @@ export function ClubLabel({
   );
 }
 
-/** `clubs` is a comma-joined list — a player who transferred mid-season has two. */
 export function ClubList({ clubs, link = true }: { clubs: string | null; link?: boolean }) {
   const codes = (clubs ?? '')
     .split(',')
@@ -92,7 +70,6 @@ export function ClubList({ clubs, link = true }: { clubs: string | null; link?: 
   );
 }
 
-/** Stand-in for the ~3% of players with no photo, and anyone who isn't a player. */
 export function AvatarFallback({ size = 96 }: { size?: number }) {
   return (
     <svg
@@ -109,7 +86,6 @@ export function AvatarFallback({ size = 96 }: { size?: number }) {
   );
 }
 
-/** A player portrait that falls back to the silhouette on a missing or dead URL. */
 export function PlayerPhoto({
   src,
   name,
@@ -134,20 +110,6 @@ export function PlayerPhoto({
   );
 }
 
-/**
- * Table header cell that explains its own abbreviation on hover.
- *
- * The description lives in the glossary, not here, so "PIR" means the same
- * thing on every page. The panel is our own markup rather than the browser's
- * `title`: a native tooltip is rendered by the OS in its own font and colours,
- * which looks nothing like the rest of the page. `tabIndex` makes it reachable
- * by keyboard, which `title` never is, and `aria-describedby` ties it to the
- * header for screen readers.
- *
- * `alignEnd` flips the panel to hang from the right edge — the last columns of
- * a wide table would otherwise push it outside the scroll frame and get
- * clipped.
- */
 export function Th({
   metric,
   label,
@@ -198,7 +160,6 @@ export function ErrorBox({ message }: { message: string }) {
   );
 }
 
-/** Loading / error / empty in one place so every island behaves the same. */
 export function Panel<T>({
   state,
   what,
@@ -238,7 +199,6 @@ export function SeasonPicker({
   );
 }
 
-/** Shown for pre-2007 seasons, where no play-by-play exists to derive from. */
 export function BoxscoreOnlyNote({ current }: { current: Season | undefined }) {
   if (!current || current.games_with_pbp > 0) return null;
   return (

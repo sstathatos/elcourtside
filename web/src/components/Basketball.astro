@@ -1,19 +1,4 @@
 ---
-/**
- * The site's mark — a flat basketball seen at a three-quarter angle, drawn in
- * the site's design language: charcoal outline like every bordered element on
- * the page, flat accent-orange fill, no gradients.
- *
- * The seams are the front-view icon's four circles (central and two side
- * meridians plus the equator) computed on a sphere turned 30° about its
- * vertical axis, pitched 12° toward the viewer and leaned 18° in the picture
- * plane, with everything behind the horizon culled. This all runs once at
- * build time — the rendered SVG is static.
- *
- * Fills and strokes are presentation attributes, not CSS classes — an earlier
- * version painted the ball with a scoped `.skin { fill: … }` rule, and where
- * that rule didn't reach, the circle fell back to SVG's default fill: black.
- */
 interface Props {
   size?: number;
   class?: string;
@@ -29,8 +14,6 @@ const SPIN = 30;
 const PITCH = 12;
 const LEAN = -18;
 const SIDE_LON = 52;
-/** Cull anything this close to (or beyond) the horizon; the outline ring hides
- * the seam ends so they appear to run right into the edge. */
 const HORIZON = 0.05;
 
 const rad = (d: number) => (d * Math.PI) / 180;
@@ -57,7 +40,6 @@ const leanZ = (p: P3, a: number): P3 => ({
   z: p.z,
 });
 
-/** Contiguous front-facing runs become subpaths; the rest is behind the ball. */
 function toPath(points: P3[]): string {
   const runs: P3[][] = [];
   let run: P3[] = [];
