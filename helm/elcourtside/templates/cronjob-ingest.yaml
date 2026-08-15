@@ -55,3 +55,6 @@ spec:
             - name: data
               persistentVolumeClaim:
                 claimName: {{ .Release.Name }}-data
+            - name: tmp
+              emptyDir:
+                sizeLimit: {{ .Values.api.tmpSize }}

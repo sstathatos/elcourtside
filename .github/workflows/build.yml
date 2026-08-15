@@ -56,6 +56,26 @@ jobs:
       - name: Render with the kind overrides
         run: helm template elcourtside helm/elcourtside -f helm/values-kind.yaml > /dev/null
 
+      - name: Every volumeMount resolves to a volume
+        run: |
+          helm template elcourtside helm/elcourtside | python3 - <<'PY'
+          import sys, yaml
+          bad = []
+          for d in yaml.safe_load_all(sys.stdin):
+              if not d or d.get("kind") not in ("CronJob", "Deployment", "Job"):
+                  continue
+              spec = (d["spec"]["jobTemplate"]["spec"]["template"]["spec"]
+                      if d["kind"] == "CronJob" else d["spec"]["template"]["spec"])
+              names = {v["name"] for v in (spec.get("volumes") or [])}
+              for c in spec["containers"]:
+                  for m in (c.get("volumeMounts") or []):
+                      if m["name"] not in names:
+                          bad.append(f'{d["metadata"]["name"]}: mount {m["name"]} has no volume')
+          if bad:
+              sys.exit("\n".join(bad))
+          print("all volumeMounts resolve")
+          PY
+
   build:
     needs: [test, chart]
     runs-on: ubuntu-latest
