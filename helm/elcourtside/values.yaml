@@ -1,7 +1,7 @@
 api:
   image:
     repository: ghcr.io/sstathatos/elcourtside-api
-    tag: "be6972042f8c96876f5e9890a0835352baf231c9"
+    tag: "b79e6d527d41688877c091ee1407d0148f5deb55"
     pullPolicy: IfNotPresent
   containerPort: 8000
   tmpSize: 2Gi
@@ -15,7 +15,7 @@ api:
 web:
   image:
     repository: ghcr.io/sstathatos/elcourtside-web
-    tag: "be6972042f8c96876f5e9890a0835352baf231c9"
+    tag: "b79e6d527d41688877c091ee1407d0148f5deb55"
     pullPolicy: IfNotPresent
   replicaCount: 2
   containerPort: 8080
