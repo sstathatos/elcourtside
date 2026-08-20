@@ -386,7 +386,8 @@ async function get<T>(path: string, params: Params = {}): Promise<T> {
 export const api = {
   seasons: () => get<Season[]>('/seasons'),
   clubs: (season?: string) => get<Club[]>('/clubs', { season }),
-  standings: (season?: string) => get<StandingsRow[]>('/standings', { season }),
+  standings: (season?: string, phase?: Phase) =>
+    get<StandingsRow[]>('/standings', { season, phase }),
   games: (p: {
     season?: string;
     round?: number;

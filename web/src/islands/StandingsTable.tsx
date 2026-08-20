@@ -87,6 +87,10 @@ function RegularSeason({ season }: { season: string | undefined }) {
 }
 
 function FinalFour({ season, champion }: { season: string | undefined; champion: string | null }) {
+  const table = useApi(
+    () => (season ? api.standings(season, 'FF') : Promise.resolve([])),
+    [season],
+  );
   const state = useApi(
     () => (season ? api.games({ season, phase: 'FF' as Phase, limit: 10 }) : Promise.resolve([])),
     [season],
@@ -95,8 +99,9 @@ function FinalFour({ season, champion }: { season: string | undefined; champion:
   return (
     <>
       <p className="note">
-        Semi-finals, third place and the final — the games that actually decide
-        the title, which the league table above does not.
+        Placings are derived from the results — the source publishes no Final Four
+        table. Where no third-place game is recorded, the beaten semi-finalists
+        share third: from 2025-26 none is played, and 2001-02 is missing it.
       </p>
       {champion && (
         <p className="champion-line">
@@ -104,6 +109,50 @@ function FinalFour({ season, champion }: { season: string | undefined; champion:
           <ClubLabel code={champion} />
         </p>
       )}
+
+      <Panel state={table} what="Final Four placings">
+        {(rows) =>
+          rows.length === 0 ? (
+            <></>
+          ) : (
+            <div className="table-frame" style={{ marginBottom: '1.6rem' }}>
+              <table>
+                <thead>
+                  <tr>
+                    <Th metric="club" label="Club" left />
+                    <Th metric="gp" label="GP" />
+                    <Th metric="w" label="W" />
+                    <Th metric="l" label="L" />
+                    <Th metric="pf" label="PF" />
+                    <Th metric="pa" label="PA" />
+                    <Th metric="diff" label="Diff" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.club_code}>
+                      <td>
+                        <span className="club">
+                          <span className="rank">{r.rank ? `${r.rank}.` : '—'}</span>
+                          <ClubLabel code={r.club_code} name={r.club_name} />
+                        </span>
+                      </td>
+                      <td className="num">{r.games}</td>
+                      <td className="num">{r.wins}</td>
+                      <td className="num">{r.losses}</td>
+                      <td className="num">{r.points_for}</td>
+                      <td className="num">{r.points_against}</td>
+                      <td className={signClass(r.point_diff)}>{signed(r.point_diff)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        }
+      </Panel>
+
+      <h3 className="section-title">Games</h3>
       <Panel state={state} what="Final Four games">
         {(games) =>
           games.length === 0 ? (

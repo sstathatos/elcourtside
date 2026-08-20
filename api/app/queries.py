@@ -281,6 +281,67 @@ def clubs(conn, source: str, season_code: str) -> list[dict]:
     ))
 
 
+def final_four_table(conn, source: str, season_code: str) -> list[dict]:
+    """Final Four placings, derived from the games — the source publishes no such table."""
+    games = _rows(conn.execute(
+        """SELECT game_code, utc_date, home_club_code, home_club_name, home_score,
+                  away_club_code, away_club_name, away_score
+           FROM games
+           WHERE source=? AND season_code=? AND phase_type_code='FF' AND is_final=1
+           ORDER BY utc_date, game_code""",
+        (source, season_code),
+    ))
+    if not games:
+        return []
+
+    names: dict[str, str] = {}
+    agg: dict[str, dict] = {}
+    for g in games:
+        for code, name, pf, pa in (
+            (g["home_club_code"], g["home_club_name"], g["home_score"], g["away_score"]),
+            (g["away_club_code"], g["away_club_name"], g["away_score"], g["home_score"]),
+        ):
+            names.setdefault(code, name)
+            row = agg.setdefault(code, {"games": 0, "wins": 0, "losses": 0,
+                                        "points_for": 0, "points_against": 0})
+            row["games"] += 1
+            row["wins" if (pf or 0) > (pa or 0) else "losses"] += 1
+            row["points_for"] += pf or 0
+            row["points_against"] += pa or 0
+
+    def winner(g): return g["home_club_code"] if (g["home_score"] or 0) > (g["away_score"] or 0) else g["away_club_code"]
+    def loser(g): return g["away_club_code"] if winner(g) == g["home_club_code"] else g["home_club_code"]
+    def pair(g): return {g["home_club_code"], g["away_club_code"]}
+
+    rank: dict[str, int] = {}
+    if len(games) >= 3:
+        semis, rest = games[:2], games[2:]
+        finalists = {winner(semis[0]), winner(semis[1])}
+        beaten = {loser(semis[0]), loser(semis[1])}
+        final = next((g for g in rest if pair(g) == finalists), rest[-1])
+        third = next((g for g in rest if pair(g) == beaten), None)
+        rank[winner(final)] = 1
+        rank[loser(final)] = 2
+        if third:
+            rank[winner(third)] = 3
+            rank[loser(third)] = 4
+        else:
+            for club in beaten:
+                rank[club] = 3
+
+    out = []
+    for code, row in agg.items():
+        out.append({
+            "club_code": code,
+            "club_name": names.get(code),
+            **row,
+            "point_diff": row["points_for"] - row["points_against"],
+            "rank": rank.get(code),
+        })
+    out.sort(key=lambda r: (r["rank"] is None, r["rank"] or 0, -r["point_diff"]))
+    return out
+
+
 def standings(conn, source: str, season_code: str) -> list[dict]:
     return _rows(conn.execute(
         """SELECT club_code, club_name, games, wins, losses,

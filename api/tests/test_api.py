@@ -354,3 +354,49 @@ def test_player_page_survives_a_database_without_radar_columns(client, api_conn,
     r = client.get(f"/api/players/{player_code}")
     assert r.status_code == 200, r.text
     assert r.json()["radar"] == []
+
+
+def _ff_game(conn, code, date, home, hs, away, aws):
+    db.upsert_games(conn, SRC, [{
+        "season_code": SEASON, "game_code": code, "identifier": f"E_{code}",
+        "utc_date": date, "local_date": None, "round": 1, "round_name": "FF",
+        "phase_type_code": "FF", "phase_type_name": "Final Four", "group_name": "",
+        "played": 1, "game_status": "Confirmed",
+        "home_club_code": home, "home_club_name": home, "home_score": hs,
+        "away_club_code": away, "away_club_name": away, "away_score": aws,
+        "home_partials": None, "away_partials": None,
+        "winner_club_code": home if hs > aws else away, "audience": 0,
+    }], "t0")
+    db.set_game_ingest_state(conn, SRC, SEASON, code, "ok", "ok", 1, "t0")
+
+
+def test_final_four_table_without_a_third_place_game(client, api_conn):
+    _ff_game(api_conn, 900, "2026-05-22T18:00:00Z", "AAA", 79, "BBB", 61)
+    _ff_game(api_conn, 901, "2026-05-22T21:00:00Z", "CCC", 90, "DDD", 105)
+    _ff_game(api_conn, 902, "2026-05-24T19:00:00Z", "AAA", 92, "DDD", 85)
+    api_conn.commit()
+    cache.clear()
+    rows = client.get("/api/standings?phase=FF").json()
+    by_club = {r["club_code"]: r for r in rows}
+    assert by_club["AAA"]["rank"] == 1
+    assert by_club["DDD"]["rank"] == 2
+    # no third-place game, so both beaten semi-finalists share third
+    assert by_club["BBB"]["rank"] == 3 and by_club["CCC"]["rank"] == 3
+    assert by_club["AAA"]["wins"] == 2 and by_club["AAA"]["games"] == 2
+    assert by_club["DDD"]["points_for"] == 105 + 85
+
+
+def test_final_four_table_with_a_third_place_game(client, api_conn):
+    _ff_game(api_conn, 910, "2026-05-22T18:00:00Z", "AAA", 79, "BBB", 61)
+    _ff_game(api_conn, 911, "2026-05-22T21:00:00Z", "CCC", 90, "DDD", 105)
+    _ff_game(api_conn, 912, "2026-05-24T16:00:00Z", "BBB", 70, "CCC", 68)
+    _ff_game(api_conn, 913, "2026-05-24T19:00:00Z", "AAA", 92, "DDD", 85)
+    api_conn.commit()
+    cache.clear()
+    by_club = {r["club_code"]: r for r in client.get("/api/standings?phase=FF").json()}
+    assert [by_club[c]["rank"] for c in ("AAA", "DDD", "BBB", "CCC")] == [1, 2, 3, 4]
+
+
+def test_standings_without_a_phase_is_still_the_regular_season(client):
+    rows = client.get("/api/standings").json()
+    assert [(r["club_code"], r["wins"]) for r in rows] == [("IST", 1), ("TEL", 0)]
