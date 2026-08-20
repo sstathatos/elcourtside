@@ -1,9 +1,11 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 import type { Club, Season } from '../lib/api';
-import { useClubs } from './hooks';
+import { pageHref, useClubs } from './hooks';
 import { GLOSSARY, type MetricKey } from '../lib/glossary';
 
-const ClubsContext = createContext<Map<string, Club>>(new Map());
+type ClubsValue = { clubs: Map<string, Club>; season: string | undefined };
+
+const ClubsContext = createContext<ClubsValue>({ clubs: new Map(), season: undefined });
 
 export function ClubsProvider({
   season,
@@ -13,11 +15,12 @@ export function ClubsProvider({
   children: ReactNode;
 }) {
   const clubs = useClubs(season);
-  return <ClubsContext.Provider value={clubs}>{children}</ClubsContext.Provider>;
+  const value = useMemo(() => ({ clubs, season }), [clubs, season]);
+  return <ClubsContext.Provider value={value}>{children}</ClubsContext.Provider>;
 }
 
 export function Crest({ code, size = 18 }: { code: string | null | undefined; size?: number }) {
-  const clubs = useContext(ClubsContext);
+  const { clubs } = useContext(ClubsContext);
   const [failed, setFailed] = useState(false);
   const url = code ? clubs.get(code)?.crest_url : null;
   if (!url || failed) return null;
@@ -46,11 +49,16 @@ export function ClubLabel({
   link?: boolean;
   size?: number;
 }) {
+  const { season } = useContext(ClubsContext);
   const label = name ?? code ?? '—';
   return (
     <span className="club">
       <Crest code={code} size={size} />
-      {link && code ? <a href={`/teams/?club=${code}`}>{label}</a> : <span>{label}</span>}
+      {link && code ? (
+        <a href={pageHref('/teams/', { club: code, season })}>{label}</a>
+      ) : (
+        <span>{label}</span>
+      )}
     </span>
   );
 }

@@ -1,5 +1,5 @@
 import { api, shortDate, signClass, signed, type Phase } from '../lib/api';
-import { useApi, useSeasons } from './hooks';
+import { useApi, useSeasons, pageHref} from './hooks';
 import { ClubLabel, ClubsProvider, Crest, Panel, SeasonPicker, Th } from './ui';
 import { useState } from 'react';
 
@@ -193,7 +193,7 @@ function FinalFour({ season, champion }: { season: string | undefined; champion:
                           <strong>{g.home_score}</strong>–<strong>{g.away_score}</strong>
                         </td>
                         <td>
-                          <a href={`/games/?code=${g.game_code}`}>open</a>
+                          <a href={pageHref('/games/', { code: g.game_code, season })}>open</a>
                         </td>
                       </tr>
                     );

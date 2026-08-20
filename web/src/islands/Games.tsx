@@ -1,5 +1,5 @@
 import { api, mmss, num, shortDate, signClass, signed, type BoxscoreLine } from '../lib/api';
-import { setParam, useApi, useParam, useSeasons } from './hooks';
+import { setParam, useApi, useParam, useSeasons, pageHref} from './hooks';
 import {
   BackLink,
   BoxscoreOnlyNote,
@@ -71,7 +71,7 @@ function GameList() {
                         <strong>{g.home_score}</strong>–<strong>{g.away_score}</strong>
                       </td>
                       <td>
-                        <a href={`/games/?code=${g.game_code}`}>open</a>
+                        <a href={pageHref('/games/', { code: g.game_code, season })}>open</a>
                       </td>
                     </tr>
                   );
@@ -125,8 +125,8 @@ function GameDetail({ code }: { code: number }) {
                 <p className="note">No play-by-play for this game — boxscore only.</p>
               )}
 
-              <Side g={g} isHome={1} name={g.home_club_name} />
-              <Side g={g} isHome={0} name={g.away_club_name} />
+              <Side g={g} isHome={1} name={g.home_club_name} season={season} />
+              <Side g={g} isHome={0} name={g.away_club_name} season={season} />
             </>
           );
         }}
@@ -139,10 +139,12 @@ function Side({
   g,
   isHome,
   name,
+  season,
 }: {
   g: { boxscore: BoxscoreLine[]; player_metrics: Array<{ player_code: string; pir: number | null; pm_computed: number | null }> };
   isHome: 0 | 1;
   name: string | null;
+  season: string | undefined;
 }) {
   const metrics = new Map(g.player_metrics.map((m) => [m.player_code, m]));
   const lines = g.boxscore.filter((b) => b.is_home === isHome && b.entry_type === 'player');
@@ -175,7 +177,7 @@ function Side({
               return (
                 <tr key={b.player_code}>
                   <td>
-                    <a href={`/players/?code=${b.player_code}`}>{b.player_name}</a>
+                    <a href={pageHref('/players/', { code: b.player_code, season })}>{b.player_name}</a>
                     {b.start_five ? <span className="muted"> ·</span> : null}
                   </td>
                   <td className="num">{mmss(b.seconds_played)}</td>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api, gameClock, mmss, num, signClass, signed } from '../lib/api';
-import { useApi, useSeasons } from './hooks';
+import { useApi, useSeasons, pageHref} from './hooks';
 import { BoxscoreOnlyNote, ClubLabel, ClubList, ClubsProvider, Panel, SeasonPicker, Th } from './ui';
 
 type Tab = 'runs' | 'leads' | 'clutch' | 'fouls';
@@ -102,7 +102,7 @@ function Runs({ season }: { season: string | undefined }) {
                       {detail ? `${gameClock(detail.start_s)} → ${gameClock(detail.end_s)}` : '—'}
                     </td>
                     <td>
-                      <a href={`/games/?code=${r.game_code}`}>game</a>
+                      <a href={pageHref('/games/', { code: r.game_code, season })}>game</a>
                     </td>
                   </tr>
                 );
@@ -152,7 +152,7 @@ function Leads({ season }: { season: string | undefined }) {
                     {r.points}–{r.opponent_points}
                   </td>
                   <td>
-                    <a href={`/games/?code=${r.game_code}`}>game</a>
+                    <a href={pageHref('/games/', { code: r.game_code, season })}>game</a>
                   </td>
                 </tr>
               ))}
@@ -190,7 +190,7 @@ function Clutch({ season }: { season: string | undefined }) {
                     {d.players.map((p) => (
                       <tr key={p.player_code}>
                         <td>
-                          <a href={`/players/?code=${p.player_code}`}>{p.player_name}</a>{' '}
+                          <a href={pageHref('/players/', { code: p.player_code, season })}>{p.player_name}</a>{' '}
                           <ClubList clubs={p.clubs} />
                         </td>
                         <td className="num">{mmss(p.clutch_seconds)}</td>
@@ -262,7 +262,7 @@ function Fouls({ season }: { season: string | undefined }) {
                     {d.players.map((p) => (
                       <tr key={p.player_code}>
                         <td>
-                          <a href={`/players/?code=${p.player_code}`}>{p.player_name}</a>{' '}
+                          <a href={pageHref('/players/', { code: p.player_code, season })}>{p.player_name}</a>{' '}
                           <ClubList clubs={p.clubs} />
                         </td>
                         <td className="num">{p.games_played}</td>

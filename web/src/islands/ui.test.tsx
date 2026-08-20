@@ -1,7 +1,30 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { GLOSSARY } from '../lib/glossary';
-import { Th } from './ui';
+import { pageHref } from './hooks';
+import { ClubLabel, ClubsProvider, Th } from './ui';
+
+describe('pageHref', () => {
+  it('carries the season, because game codes restart every season', () => {
+    expect(pageHref('/games/', { code: 42, season: 'E2005' })).toBe('/games/?code=42&season=E2005');
+  });
+
+  it('omits a season it does not have rather than sending an empty one', () => {
+    expect(pageHref('/games/', { code: 42, season: undefined })).toBe('/games/?code=42');
+    expect(pageHref('/teams/', { club: 'OLY', season: '' })).toBe('/teams/?club=OLY');
+  });
+});
+
+describe('ClubLabel', () => {
+  it('links to the club in the season being viewed', () => {
+    const markup = renderToStaticMarkup(
+      <ClubsProvider season="E2005">
+        <ClubLabel code="OLY" name="Olympiacos" />
+      </ClubsProvider>,
+    );
+    expect(markup).toContain('href="/teams/?club=OLY&amp;season=E2005"');
+  });
+});
 
 describe('Th', () => {
   it('explains an abbreviation in a styled panel, not a native title', () => {

@@ -79,6 +79,19 @@ export function useSort<T>(rows: T[], initial: keyof T, initialDesc = true) {
   return { sorted, key, desc, toggle, ariaSort };
 }
 
+/** Game codes restart each season, so every cross-page link has to carry the season. */
+export function pageHref(
+  path: string,
+  params: Record<string, string | number | null | undefined>,
+): string {
+  const qs = new URLSearchParams();
+  for (const [name, value] of Object.entries(params)) {
+    if (value !== null && value !== undefined && value !== '') qs.set(name, String(value));
+  }
+  const query = qs.toString();
+  return query ? `${path}?${query}` : path;
+}
+
 export function setParam(name: string, value: string | null) {
   const url = new URL(window.location.href);
   if (value === null) url.searchParams.delete(name);

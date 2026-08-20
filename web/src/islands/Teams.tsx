@@ -1,5 +1,5 @@
 import { api, mmss, num, shortDate, signClass, signed, type TeamSeason } from '../lib/api';
-import { setParam, useApi, useParam, useSeasons, useSort } from './hooks';
+import { setParam, useApi, useParam, useSeasons, useSort, pageHref} from './hooks';
 import {
   BackLink,
   BoxscoreOnlyNote,
@@ -165,7 +165,7 @@ function TeamDetail({ club }: { club: string }) {
                       <td>
                         <span className="club">
                           <PlayerPhoto src={p.headshot_url} name={p.player_name} size={30} />
-                          <a href={`/players/?code=${p.player_code}`}>{p.player_name}</a>
+                          <a href={pageHref('/players/', { code: p.player_code, season })}>{p.player_name}</a>
                         </span>
                       </td>
                       <td style={{ textAlign: 'left' }} className="muted">
@@ -225,7 +225,7 @@ function TeamDetail({ club }: { club: string }) {
                       <td className="num">{g.max_lead ?? '—'}</td>
                       <td className={signClass(g.clutch_pm)}>{signed(g.clutch_pm)}</td>
                       <td>
-                        <a href={`/games/?code=${g.game_code}`}>open</a>
+                        <a href={pageHref('/games/', { code: g.game_code, season })}>open</a>
                       </td>
                     </tr>
                   ))}

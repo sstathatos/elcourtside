@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, mmss, num, shortDate, signClass, signed, type PlayerSort } from '../lib/api';
-import { setParam, useApi, useParam, useSeasons } from './hooks';
+import { setParam, useApi, useParam, useSeasons, pageHref} from './hooks';
 import {
   BackLink,
   BoxscoreOnlyNote,
@@ -114,7 +114,7 @@ function PlayerTable() {
                   <tr key={p.player_code}>
                     <td>
                       <span className="rank">{i + 1}.</span>{' '}
-                      <a href={`/players/?code=${p.player_code}`}>{p.player_name}</a>
+                      <a href={pageHref('/players/', { code: p.player_code, season })}>{p.player_name}</a>
                     </td>
                     <td style={{ textAlign: 'left' }} className="muted">
                       <ClubList clubs={p.clubs} />
@@ -226,7 +226,7 @@ function PlayerDetail({ code }: { code: string }) {
                       </td>
                       <td className={signClass(g.pm_computed)}>{signed(g.pm_computed)}</td>
                       <td>
-                        <a href={`/games/?code=${g.game_code}`}>open</a>
+                        <a href={pageHref('/games/', { code: g.game_code, season })}>open</a>
                       </td>
                     </tr>
                   ))}

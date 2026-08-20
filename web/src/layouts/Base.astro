@@ -70,6 +70,18 @@ const path = Astro.url.pathname;
     </footer>
 
     <script is:inline>
+      // The nav is static HTML, so it can only learn the season from the URL at runtime.
+      const syncNav = () => {
+        const season = new URLSearchParams(location.search).get('season');
+        for (const a of document.querySelectorAll('nav a')) {
+          a.search = season ? '?season=' + encodeURIComponent(season) : '';
+        }
+      };
+      syncNav();
+      window.addEventListener('popstate', syncNav);
+    </script>
+
+    <script is:inline>
       document.getElementById('theme-toggle').addEventListener('click', () => {
         const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
         document.documentElement.dataset.theme = next;
